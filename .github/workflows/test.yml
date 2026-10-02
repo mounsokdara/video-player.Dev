@@ -1,3 +1,4 @@
+# DEV REPO: edit and test here first. Publish to the public repo (mounsokdara/video-player) only after the dev run passes.
 name: Dev Test
 
 on:

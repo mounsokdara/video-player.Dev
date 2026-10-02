@@ -1,3 +1,10 @@
+<!--
+  DEV WORKFLOW NOTE (hidden):
+  This is the DEV copy of mounsokdara/video-player.
+  Make and test every change HERE first (branch dev/** or main), confirm the
+  Dev Test workflow passes and the dev APK works, and only then publish the
+  change to the public repo. Never edit the public repo directly.
+-->
 > **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
 
 > **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
