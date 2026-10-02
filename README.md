@@ -1,3 +1,7 @@
+> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
+
+> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
+
 # Video Player
 
 Local-only Material 3 Android player. Playback uses libmpv (media_kit). Files stay on the device.

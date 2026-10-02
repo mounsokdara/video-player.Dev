@@ -1,0 +1,27 @@
+name: Sync from public
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge public main (keeps dev workflows)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git remote add upstream https://github.com/mounsokdara/video-player.git
+          git fetch upstream main
+          git merge upstream/main --no-edit -X ours || { echo "Merge conflict - resolve manually"; exit 1; }
+          git rm -q --ignore-unmatch .github/workflows/build-apk.yml
+          git diff --cached --quiet || git commit -m "Remove public release workflow after sync"
+          git push origin main
