@@ -43,6 +43,17 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Restore signing key
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > android/app/upload-keystore.jks
+            printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' "$KS_PASS" "$KEY_PASS" "$KEY_ALIAS" > android/key.properties
+          fi
       - run: flutter build apk --release
       - run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/com.mounsokdara.video_player.dev.apk
       - uses: actions/upload-artifact@v4
