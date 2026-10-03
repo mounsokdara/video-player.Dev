@@ -55,6 +55,17 @@ jobs:
             printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' "$KS_PASS" "$KEY_PASS" "$KEY_ALIAS" > android/key.properties
           fi
       - run: flutter build apk --release
+      - name: Sign + verify APK (apksigner v1/v2/v3)
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -f android/key.properties ]; then
+            OUTDIR=build/app/outputs/flutter-apk
+            KS_FILE=android/app/upload-keystore.jks bash scripts/sign-apk.sh "$OUTDIR/app-release.apk" "$OUTDIR/app-release-signed.apk"
+            mv -f "$OUTDIR/app-release-signed.apk" "$OUTDIR/app-release.apk"
+          fi
       - run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/com.mounsokdara.video_player.dev.apk
       - uses: actions/upload-artifact@v4
         with:
