@@ -18,7 +18,8 @@ echo "Using $APKSIGNER"
 
 REPORT="$("$APKSIGNER" verify --verbose --print-certs "$OUT")"
 echo "$REPORT" | grep -E "^Verifies|Verified using|Number of signers|certificate SHA-256"
-for s in "v1 scheme (JAR signing)" "v2 scheme (APK Signature Scheme v2)" "v3 scheme (APK Signature Scheme v3)"; do
+# minSdk >= 24: the verifier skips the legacy v1 (JAR) scheme, so only v2 and v3 are required here.
+for s in "v2 scheme (APK Signature Scheme v2)" "v3 scheme (APK Signature Scheme v3)"; do
   echo "$REPORT" | grep -qF "Verified using $s: true" || { echo "::error::missing signature: $s"; exit 1; }
 done
 
