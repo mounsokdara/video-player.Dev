@@ -423,6 +423,7 @@ open class MainActivity : FlutterActivity() {
                 tryFileDelete(file) || !file.exists()
             }
         } catch (_: SecurityException) {
+            // Never launch RecoverableSecurityException's confirmation sheet.
             tryFileDelete(file) || !file.exists()
         } catch (_: Exception) {
             tryFileDelete(file) || !file.exists()
