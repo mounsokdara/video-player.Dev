@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/library/library.dart';
@@ -77,9 +78,7 @@ class _VideoThumbState extends State<VideoThumb> {
 
 void showAllFilesFailed(BuildContext context, String action) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Failed to $action. Make sure you have all file access Enabled')),
-  );
+  SlideSnackBar.show(context, message: 'Failed to $action. Make sure you have all file access Enabled', behavior: SnackBarBehavior.floating);
 }
 
 class LibraryRefresh extends StatelessWidget {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/core/developer_log.dart';
 
@@ -183,7 +184,7 @@ class CrashLog {
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: log));
                   if (c.mounted) {
-                    ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Copied. Paste it in chat.')));
+                    SlideSnackBar.show(c, message: 'Copied. Paste it in chat.', behavior: SnackBarBehavior.floating);
                   }
                 },
                 child: const Text('Copy'),

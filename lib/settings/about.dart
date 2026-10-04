@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/core/developer_log.dart';
 import 'package:video_player_app/settings/settings.dart';
@@ -13,7 +14,7 @@ class AboutInfo {
   AboutInfo._();
   static const name = 'Video Player';
   static const author = 'Moun Sokdara';
-  static const displayVersion = '1.0.2';
+  static const displayVersion = '1.0.2.1';
   static const legalese = 'Local-only Android player. Material 3.';
 }
 
@@ -43,16 +44,12 @@ class _AboutPageState extends State<AboutPage> {
     _lastTap = now;
     _taps += 1;
     if (appSettings.developerEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Developer options are on')),
-      );
+      SlideSnackBar.show(context, message: 'Developer options are on', behavior: SnackBarBehavior.floating);
       return;
     }
     final left = 10 - _taps;
     if (left > 0 && left <= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$left tap${left == 1 ? '' : 's'} away from developer options')),
-      );
+      SlideSnackBar.show(context, message: '$left tap${left == 1 ? '' : 's'} away from developer options', behavior: SnackBarBehavior.floating);
     }
     if (_taps >= 10) {
       _taps = 0;
@@ -60,9 +57,7 @@ class _AboutPageState extends State<AboutPage> {
       unawaited(appSettings.save());
       unawaited(HapticFeedback.mediumImpact());
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Developer options enabled')),
-      );
+      SlideSnackBar.show(context, message: 'Developer options enabled', behavior: SnackBarBehavior.floating);
     }
   }
 
@@ -71,7 +66,7 @@ class _AboutPageState extends State<AboutPage> {
     final scheme = Theme.of(context).colorScheme;
     final version = _info == null
         ? AboutInfo.displayVersion
-        : '${_info!.version} (${_info!.buildNumber})';
+        : '${AboutInfo.displayVersion} (${_info!.buildNumber})';
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
       body: ListView(
@@ -272,9 +267,7 @@ class _DeveloperConsolePageState extends State<DeveloperConsolePage> {
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: text));
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Copied')),
-                );
+                SlideSnackBar.show(context, message: 'Copied', behavior: SnackBarBehavior.floating);
               }
             },
             icon: const Icon(Icons.copy),

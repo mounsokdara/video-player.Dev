@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/core/models.dart';
 import 'package:video_player_app/core/widgets.dart';
@@ -71,9 +72,7 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
     final ok = await AndroidBridge.completePick(path: item.path);
     _busy = false;
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not share that video')),
-      );
+      SlideSnackBar.show(context, message: 'Could not share that video', behavior: SnackBarBehavior.floating);
     }
   }
 
@@ -88,9 +87,7 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
     final ok = await AndroidBridge.completePick(paths: paths);
     _busy = false;
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not share those videos')),
-      );
+      SlideSnackBar.show(context, message: 'Could not share those videos', behavior: SnackBarBehavior.floating);
     }
   }
 

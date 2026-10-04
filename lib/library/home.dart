@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
+import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/core/insets.dart';
@@ -28,6 +29,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
+  final _snackHost = GlobalKey();
   int tab = 0;
   bool loading = true;
   String? error;
@@ -252,7 +254,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _openPath(String path) async {
     if (!looksLikeVideo(path)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('That file is not a playable video')));
+        SlideSnackBar.show(context, message: 'That file is not a playable video', behavior: SnackBarBehavior.floating);
       }
       return;
     }
@@ -709,7 +711,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     if (wide) {
       return Scaffold(
-        body: Padding(
+        body: SlideSnackBarHost(
+          key: _snackHost,
+          child: Padding(
           padding: EdgeInsets.only(left: pad.left, right: pad.right),
           child: shell(
           Row(
@@ -730,15 +734,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ],
           ),
           ),
+          ),
         ),
         floatingActionButton: _pasteFab(),
       );
     }
 
     return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.only(left: pad.left, right: pad.right),
-        child: shell(body),
+      body: SlideSnackBarHost(
+        key: _snackHost,
+        child: Padding(
+          padding: EdgeInsets.only(left: pad.left, right: pad.right),
+          child: shell(body),
+        ),
       ),
       floatingActionButton: _pasteFab(),
       bottomNavigationBar: tabs.length <= 1
