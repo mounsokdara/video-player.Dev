@@ -1,3 +1,8 @@
+// Material You colour plates + scheme generator, ported from the Khmer Calendar app
+// (theme.dart + widgets/scheme_chips.dart) so every app shares the same palette.
+//
+//   materialYouScheme(seed, brightness, extraDark: ...)  -> ColorScheme
+//   MaterialYouChips(selected: ..., onPick: ...)         -> the scrolling plate row
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -68,6 +73,7 @@ SchemeChip _chip(int id, String label, String circleHex) {
   );
 }
 
+/// Same 14 colours, in the same order, as the Khmer Calendar.
 final schemeChips = <SchemeChip>[
   _chip(0, 'Red', '#9a3b38'),
   _chip(1, 'Purple', '#68509f'),
@@ -205,6 +211,7 @@ Map<String, String> _cy(String hex, double hue, bool dark) {
   };
 }
 
+/// Pure-black surfaces for dark mode ("extra dark" / AMOLED).
 Map<String, String> _wy(Map<String, String> tokens, double hue) => {
       ...tokens,
       'surface': '#000000',
@@ -253,6 +260,8 @@ ColorScheme _fromTokens(Map<String, String> tok, Brightness brightness) {
   );
 }
 
+/// Khmer-Calendar-style Material You scheme for any seed colour. The 14 preset
+/// colours give exactly the calendar's palette (red uses its hand-tuned tokens).
 ColorScheme materialYouScheme(Color seed, Brightness brightness, {bool extraDark = false}) {
   final dark = brightness == Brightness.dark;
   final rgb = seed.toARGB32() & 0xFFFFFF;
@@ -265,6 +274,7 @@ ColorScheme materialYouScheme(Color seed, Brightness brightness, {bool extraDark
   return _fromTokens(tokens, brightness);
 }
 
+/// The scrolling row of Material You colour plates (replaces the old chips / circles).
 class MaterialYouChips extends StatelessWidget {
   const MaterialYouChips({
     super.key,
@@ -274,10 +284,13 @@ class MaterialYouChips extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(16, 6, 16, 6),
   });
 
+  /// Colour of the currently selected plate (matched by RGB); null = none selected.
   final Color? selected;
   final ValueChanged<SchemeChip> onPick;
   final bool enabled;
 
+  /// Row padding. The default matches the calendar's full-bleed lists; use
+  /// `EdgeInsets.symmetric(vertical: 6)` inside an already-padded page.
   final EdgeInsetsGeometry padding;
 
   @override
@@ -287,6 +300,7 @@ class MaterialYouChips extends StatelessWidget {
       opacity: enabled ? 1 : 0.38,
       child: SizedBox(
         height: 76,
+        // Let mouse / trackpad users drag the row too (needed on web).
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(dragDevices: PointerDeviceKind.values.toSet()),
           child: ListView.separated(

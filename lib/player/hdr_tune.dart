@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:video_player_app/playback/engine.dart';
 
+/// Bottom sheet with live HDR brightness controls.
 Future<void> showHdrTune(BuildContext context, PlaybackEngine? engine) {
   return showModalBottomSheet<void>(
     context: context,
