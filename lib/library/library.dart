@@ -107,18 +107,26 @@ class LibraryService {
     return copied;
   }
 
+  bool _askedAllFiles = false;
+
   Future<void> requestPermissions() async {
-    await [
-      Permission.videos,
-      Permission.storage,
-      Permission.audio,
-      Permission.notification,
-    ].request();
+    await Permission.notification.request();
 
-    final pm = await PhotoManager.requestPermissionExtend();
-    permissionReady = pm.isAuth || pm.hasAccess;
-
-    allFiles = await AndroidBridge.hasAllFilesAccess();
+    final sdk = await AndroidBridge.sdkInt();
+    if (sdk >= 30) {
+      // Android 11+: ask for All files access instead of the media prompt.
+      allFiles = await AndroidBridge.hasAllFilesAccess();
+      if (!allFiles && !_askedAllFiles) {
+        _askedAllFiles = true;
+        await AndroidBridge.requestAllFilesAccess();
+        allFiles = await AndroidBridge.hasAllFilesAccess();
+      }
+    } else {
+      // Android 10 and older have no All files permission; use legacy storage.
+      await Permission.storage.request();
+      allFiles = await AndroidBridge.hasAllFilesAccess();
+    }
+    permissionReady = allFiles;
     manageMedia = await AndroidBridge.canManageMedia();
   }
 

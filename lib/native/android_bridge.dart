@@ -25,6 +25,14 @@ class AndroidBridge {
     return _events!;
   }
 
+  static Future<int> sdkInt() async {
+    try {
+      return await _ch.invokeMethod<int>('sdkInt') ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   static Future<bool> hasAllFilesAccess() async {
     try {
       return await _ch.invokeMethod<bool>('hasAllFilesAccess') ?? false;

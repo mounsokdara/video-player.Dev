@@ -9,8 +9,8 @@ final appSettings = AppSettings();
 
 class AppSettings {
   ThemeModePref themeMode = ThemeModePref.system;
-  int seedColor = 0xFF8BA3B8;
-  bool dynamicColor = true;
+  int seedColor = 0xFF38618D;
+  bool dynamicColor = false;
   PlaylistUiStyle playlistStyle = PlaylistUiStyle.sheet;
 
   // General
@@ -196,8 +196,8 @@ class AppSettings {
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
     themeMode = ThemeModePref.values[(p.getInt('themeMode') ?? 0).clamp(0, ThemeModePref.values.length - 1)];
-    seedColor = p.getInt('seedColor') ?? 0xFF8BA3B8;
-    dynamicColor = p.getBool('dynamicColor') ?? true;
+    seedColor = p.getInt('seedColor') ?? 0xFF38618D;
+    dynamicColor = p.getBool('dynamicColor') ?? false;
     playlistStyle = PlaylistUiStyle.values[(p.getInt('playlistStyle') ?? 0).clamp(0, PlaylistUiStyle.values.length - 1)];
     rememberPlayback = p.getBool('rememberPlayback') ?? true;
     confirmDelete = p.getBool('confirmDelete') ?? true;

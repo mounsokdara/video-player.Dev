@@ -144,6 +144,7 @@ open class MainActivity : FlutterActivity() {
                 try {
                     if (appNative.handleLocal(call.method, call, result)) return@setMethodCallHandler
                     when (call.method) {
+                        "sdkInt" -> result.success(Build.VERSION.SDK_INT)
                         "hasAllFilesAccess" -> {
                             result.success(
                                 if (Build.VERSION.SDK_INT >= 30)
