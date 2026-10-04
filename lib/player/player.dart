@@ -1199,7 +1199,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     );
   }
 
-
   Widget _watchMeta() {
     final scheme = Theme.of(context).colorScheme;
     final created = item.created ?? item.modified;

@@ -85,7 +85,6 @@ extension PlayerSheets on _PlayerPageState {
         PlayMode.noAutoplay => 'No autoplay',
       };
 
-
   IconData _actionIcon(String id) => switch (id) {
         'speed' => Icons.speed,
         'background' => Icons.headphones_outlined,

@@ -272,7 +272,6 @@ class _SeekIndicatorState extends State<_SeekIndicator> with SingleTickerProvide
         animation: _c,
         builder: (_, child) {
           final t = const Cubic(0.2, 0.8, 0.2, 1).transform(_c.value);
-          // HTML: opacity 280ms ease, transform 390ms cubic-bezier(0.2, 0.8, 0.2, 1)
           final opacity = Curves.ease.transform(_c.value.clamp(0.0, 1.0));
           return Opacity(
             opacity: opacity,
@@ -390,8 +389,6 @@ class _PlayPauseBurstState extends State<_PlayPauseBurst> with SingleTickerProvi
   @override
   void initState() {
     super.initState();
-    // HTML: spring-in 480ms Cubic(0.34,1.75,0.64,1), hold until 700ms,
-    // then hide transform 200ms Cubic(0.4,0,1,0.6) + opacity 90ms linear.
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
     _c.addStatusListener((s) {
       if (s == AnimationStatus.completed) widget.onDone();

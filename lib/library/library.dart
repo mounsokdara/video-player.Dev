@@ -114,7 +114,6 @@ class LibraryService {
 
     final sdk = await AndroidBridge.sdkInt();
     if (sdk >= 30) {
-      // Android 11+: ask for All files access instead of the media prompt.
       allFiles = await AndroidBridge.hasAllFilesAccess();
       if (!allFiles && !_askedAllFiles) {
         _askedAllFiles = true;
@@ -122,7 +121,6 @@ class LibraryService {
         allFiles = await AndroidBridge.hasAllFilesAccess();
       }
     } else {
-      // Android 10 and older have no All files permission; use legacy storage.
       await Permission.storage.request();
       allFiles = await AndroidBridge.hasAllFilesAccess();
     }
@@ -134,7 +132,6 @@ class LibraryService {
     allFiles = await AndroidBridge.hasAllFilesAccess();
     if (!allFiles) await AndroidBridge.requestAllFilesAccess();
   }
-
 
   Future<void> scan() async {
     if (_scanning) return;

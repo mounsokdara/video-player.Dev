@@ -465,7 +465,6 @@ class _ThemeSettingsState extends State<ThemeSettings> {
         children: [
           const Text('Appearance', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          // Theme button, same control as Khmer Calendar: text-only, full width, check mark on wide screens.
           LayoutBuilder(
             builder: (ctx, box) => FittedBox(
               fit: BoxFit.scaleDown,
@@ -503,7 +502,6 @@ class _ThemeSettingsState extends State<ThemeSettings> {
                 children: [
                   const Text('Material You color', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  // Same colour plates as Khmer Calendar.
                   MaterialYouChips(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     selected: Color(s.seedColor),

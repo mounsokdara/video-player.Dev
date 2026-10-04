@@ -13,7 +13,6 @@ class AppSettings {
   bool dynamicColor = false;
   PlaylistUiStyle playlistStyle = PlaylistUiStyle.sheet;
 
-  // General
   bool rememberPlayback = true;
   bool confirmDelete = true;
   bool scanOnStart = true;
@@ -21,16 +20,13 @@ class AppSettings {
   bool showHiddenFolders = false;
   bool skipNomedia = true;
 
-  // Display in playback
   bool showRemaining = true;
   bool showClock = true;
   bool showBattery = true;
   bool showSeekPreview = true;
 
-  // Orientation
   RotationLock rotation = RotationLock.none;
 
-  // Playback
   DecoderMode decoder = DecoderMode.hw;
   bool hwPriority = true;
   int seekStepSeconds = 10;
@@ -57,7 +53,6 @@ class AppSettings {
 
   PlayMode playMode = PlayMode.order;
 
-  // Accessibility
   bool highContrast = false;
   bool reduceMotion = false;
   bool largeControls = false;
@@ -72,7 +67,6 @@ class AppSettings {
   bool boldText = false;
   double uiScale = 1;
 
-  // Filters
   double contrast = 1;
   double saturation = 1;
   double gamma = 1;
@@ -92,8 +86,6 @@ class AppSettings {
   bool logGestureEvents = false;
   bool logLifecycleEvents = false;
 
-  /// Tab ids hidden from the bottom bar and moved into the overflow menu.
-  /// Valid: videos, folders, settings. At least one tab must stay visible.
   List<String> hiddenTabs = [];
 
   static const tabIds = <String>['videos', 'folders', 'settings'];
@@ -158,7 +150,6 @@ class AppSettings {
     'Electronic': [520, 400, 0, -180, 180, 380, 180, 0, 380, 520],
   };
 
-  // Equalizer
   bool eqEnabled = false;
   List<int> eqBands = List<int>.filled(10, 0);
   String eqPreset = 'Flat';

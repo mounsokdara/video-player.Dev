@@ -164,7 +164,6 @@ class VideoPicture extends StatelessWidget {
   }
 }
 
-
 class VlcFit extends StatelessWidget {
   const VlcFit({
     super.key,
