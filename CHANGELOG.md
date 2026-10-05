@@ -2,12 +2,12 @@
 
 ## 1.0.2.4
 
-Mini player:
-- Sizes and positions itself from the real content area instead of the full screen and a guessed 88 px nav height, so it never overlaps or hides behind the bottom navigation bar on any device or system-bar style
-- Even 16 px margin on all sides, matching the page padding; side insets are no longer applied twice in landscape
-- Wide / landscape layout: the mini player stays in the content area and can no longer park over the navigation rail
-- Maximum size recalculated for the real area (bigger on tall screens, never taller than the area) and can no longer crash on very short windows
-- Narrow card: the clipped title is dropped and the three buttons are spread evenly across the bar; buttons are slightly larger and shrink only when the card is very small
+Fix (mini player):
+- Stays clear of the bottom navigation bar on every device and system-bar style; the guessed nav height is gone and the real content area is used
+- Even 16 px margin on all sides, matching the page padding; side insets are no longer counted twice in landscape
+- Wide / landscape: stays in the content area and no longer parks over the navigation rail
+- Maximum size is calculated from the real area, and a crash on very short windows is fixed
+- Narrow card: the clipped title is dropped and the three buttons spread evenly; buttons are a little larger
 
 ## 1.0.2.3
 

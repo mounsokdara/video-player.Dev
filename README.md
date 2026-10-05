@@ -73,6 +73,8 @@ Local-only Material 3 Android player. Playback uses libmpv (media_kit). Files st
 ## Mini player and background
 
 - In-app mini player scales to the screen, 16:9 landscape or 9:16 portrait
+- Stays inside the content area: clear of the bottom navigation bar and the side rail, with an even 16 px margin
+- Narrow card shows only previous / play / next, evenly spaced
 - Pinch to resize, park to an edge, swipe down to close
 - Quick gestures disabled while minimized
 - Picture-in-picture (system PIP)
