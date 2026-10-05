@@ -3,6 +3,8 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   errors:
     must_call_super: ignore
+    invalid_use_of_protected_member: ignore
+    unused_field: ignore
   exclude:
     - build/**
     - android/**

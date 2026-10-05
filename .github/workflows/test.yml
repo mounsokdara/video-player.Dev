@@ -27,7 +27,7 @@ jobs:
           set +e
           flutter analyze --no-fatal-infos > analyze.txt 2>&1
           code=$?
-          grep -E '^\s*(error|warning) ' analyze.txt | head -25 | while read -r line; do
+          grep -E '^\s*(error|warning) ' analyze.txt | head -60 | while read -r line; do
             echo "::error::$(echo "$line" | cut -c1-300)"
           done
           if [ $code -ne 0 ] && ! grep -qE '^\s*(error|warning) ' analyze.txt; then
