@@ -62,30 +62,48 @@ class MiniTransportBar extends StatelessWidget {
       color: scheme.surface,
       child: SizedBox(
         height: MiniGeom.barH,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
+        child: LayoutBuilder(
+          builder: (context, c) {
+            final compact = c.maxWidth < MiniGeom.compactW;
+            final bw = compact ? (c.maxWidth / 3).clamp(24.0, 36.0).toDouble() : 36.0;
+            final prev = _BarButton(icon: Icons.skip_previous_rounded, width: bw, onTap: onPrev);
+            final play = _BarButton(
+              icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              width: bw,
+              onTap: onPlay,
+            );
+            final next = _BarButton(icon: Icons.skip_next_rounded, width: bw, onTap: onNext);
+            if (compact) {
+              // Narrow card: a clipped one-word title is useless, so the three
+              // buttons share the full width evenly and stay centered.
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [prev, play, next],
+              );
+            }
+            return Padding(
+              padding: const EdgeInsets.only(left: 12, right: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
                   ),
-                ),
+                  prev,
+                  play,
+                  next,
+                ],
               ),
-              _BarButton(icon: Icons.skip_previous_rounded, onTap: onPrev),
-              _BarButton(
-                icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                onTap: onPlay,
-              ),
-              _BarButton(icon: Icons.skip_next_rounded, onTap: onNext),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -93,19 +111,20 @@ class MiniTransportBar extends StatelessWidget {
 }
 
 class _BarButton extends StatelessWidget {
-  const _BarButton({required this.icon, required this.onTap});
+  const _BarButton({required this.icon, required this.width, required this.onTap});
   final IconData icon;
+  final double width;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkResponse(
       onTap: onTap,
-      radius: 20,
+      radius: 22,
       child: SizedBox(
-        width: 32,
+        width: width,
         height: MiniGeom.barH,
-        child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
+        child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
       ),
     );
   }

@@ -691,7 +691,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 ignoring: !onTop,
                 child: MiniPlayerOverlay(
                   pad: pad,
-                  navH: wide || tabs.length <= 1 ? 16.0 : 88.0,
+                  // With the bottom NavigationBar the body already ends above
+                  // it, so nothing extra is needed. Without it (wide layout or a
+                  // single tab) the body runs under the system nav bar.
+                  bottomInset: !wide && tabs.length > 1 ? 0.0 : pad.bottom,
                   onExpand: () {
                     final item = PlaybackSession.item;
                     final list = PlaybackSession.playlist;
@@ -723,8 +726,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           key: _snackHost,
           child: Padding(
           padding: EdgeInsets.only(left: pad.left, right: pad.right),
-          child: shell(
-          Row(
+          child: Row(
             children: [
               NavigationRail(
                 selectedIndex: safeTab,
@@ -738,9 +740,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 destinations: [for (final id in tabs) rail(id)],
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: body),
+              // Mini player is scoped to the content, never over the rail.
+              Expanded(child: shell(body)),
             ],
-          ),
           ),
           ),
         ),

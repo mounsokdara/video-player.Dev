@@ -15,7 +15,7 @@ class MiniPlayerOverlay extends StatefulWidget {
   const MiniPlayerOverlay({
     super.key,
     required this.pad,
-    required this.navH,
+    required this.bottomInset,
     required this.onExpand,
     required this.onClose,
     required this.onPrev,
@@ -23,7 +23,10 @@ class MiniPlayerOverlay extends StatefulWidget {
   });
 
   final EdgeInsets pad;
-  final double navH;
+
+  /// Space under the content area that the mini player must stay clear of.
+  /// 0 when an app navigation bar already sits below the content area.
+  final double bottomInset;
   final VoidCallback onExpand;
   final Future<void> Function() onClose;
   final Future<void> Function() onPrev;
@@ -80,15 +83,18 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _bind();
-    final newScreen = MediaQuery.sizeOf(context);
+  }
+
+  /// Called from build with the real size of the area this overlay fills.
+  void _syncArea(Size area) {
     if (_lastScreen == null) {
-      _lastScreen = newScreen;
-      _w = MiniPhysics.defaultW(newScreen);
+      _lastScreen = area;
+      _w = MiniPhysics.defaultW(area);
       MiniMemory.w = _w;
-    } else if (_lastScreen != newScreen) {
+    } else if (_lastScreen != area) {
       final old = _lastScreen!;
-      _lastScreen = newScreen;
-      _repositionForScreenChange(old, newScreen);
+      _lastScreen = area;
+      _repositionForScreenChange(old, area);
     }
   }
 
@@ -125,12 +131,13 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     setState(() {});
   }
 
-  Size get _screen => MediaQuery.sizeOf(context);
+  // Size of the area the overlay actually occupies (set by build).
+  Size get _screen => _lastScreen ?? MediaQuery.sizeOf(context);
 
   Rect get _safe => MiniPhysics.safeZone(
         _screen,
-        pad: widget.pad,
-        navH: widget.navH,
+        topInset: widget.pad.top,
+        bottomInset: widget.bottomInset,
       );
 
   Size get _video => MiniPhysics.videoSize();
@@ -182,8 +189,8 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
     final safe = MiniPhysics.safeZone(
       newSize,
-      pad: widget.pad,
-      navH: widget.navH,
+      topInset: widget.pad.top,
+      bottomInset: widget.bottomInset,
     );
     final video = MiniPhysics.videoSize();
     final newW = MiniPhysics.clampW(_w, newSize, video);
@@ -505,6 +512,17 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final area = constraints.biggest;
+        if (!area.isFinite || area.isEmpty) return const SizedBox.shrink();
+        _syncArea(area);
+        return _buildOverlay(context);
+      },
+    );
+  }
+
+  Widget _buildOverlay(BuildContext context) {
     _bind();
     final pos = _rawPos;
     final side = _sideFor(pos);
