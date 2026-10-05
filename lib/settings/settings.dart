@@ -338,7 +338,43 @@ class AppSettings {
     pinned = (p.getStringList('pinned') ?? []).toSet();
   }
 
-  Future<void> save() async {
+  Future<void>? _saving;
+  bool _saveAgain = false;
+
+  Future<void> save() {
+    if (_saving != null) {
+      _saveAgain = true;
+      return _saving!;
+    }
+    final run = () async {
+      try {
+        do {
+          _saveAgain = false;
+          await _saveNow();
+        } while (_saveAgain);
+      } catch (_) {
+      } finally {
+        _saving = null;
+      }
+    }();
+    _saving = run;
+    return run;
+  }
+
+  Future<void> saveResume() async {
+    try {
+      if (resumeMap.length > 1500) {
+        final keys = resumeMap.keys.toList();
+        for (final k in keys.take(resumeMap.length - 1000)) {
+          resumeMap.remove(k);
+        }
+      }
+      final p = await SharedPreferences.getInstance();
+      await p.setString('resumeMap', jsonEncode(resumeMap));
+    } catch (_) {}
+  }
+
+  Future<void> _saveNow() async {
     final p = await SharedPreferences.getInstance();
     await p.setInt('themeMode', themeMode.index);
     await p.setInt('seedColor', seedColor);

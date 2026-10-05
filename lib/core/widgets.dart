@@ -37,8 +37,11 @@ class _VideoThumbState extends State<VideoThumb> {
   }
 
   Future<void> _load() async {
+    final id = widget.item.id;
     final data = await library.thumbnailFor(widget.item);
-    if (mounted) setState(() => _bytes = data);
+    if (!mounted || widget.item.id != id) return;
+    if (identical(data, _bytes)) return;
+    setState(() => _bytes = data);
   }
 
   @override
@@ -52,7 +55,7 @@ class _VideoThumbState extends State<VideoThumb> {
           ColoredBox(
             color: scheme.surfaceContainerHighest,
             child: _bytes != null
-                ? Image.memory(_bytes!, fit: BoxFit.cover)
+                ? Image.memory(_bytes!, fit: BoxFit.cover, gaplessPlayback: true, cacheWidth: 360, filterQuality: FilterQuality.low)
                 : Icon(Icons.movie_outlined, color: scheme.onSurfaceVariant),
           ),
           Positioned(

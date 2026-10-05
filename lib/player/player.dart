@@ -189,10 +189,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       unawaited(_startNew());
     }
     clockTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      if (!appSettings.showClock && !appSettings.showBattery) return;
       setState(() => now = DateTime.now());
       Battery().batteryLevel.then((v) {
-        if (mounted) setState(() => battery = v);
-      });
+        if (mounted && v != battery) setState(() => battery = v);
+      }).catchError((_) {});
     });
     persistTimer = Timer.periodic(const Duration(seconds: 4), (_) => _persistProgress());
     events = AndroidBridge.events().listen((e) {
@@ -357,10 +359,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     final dur = c.value.duration.inMilliseconds;
     if (dur <= 0) return;
     final p = (c.value.position.inMilliseconds / dur).clamp(0.0, 1.0).toDouble();
+    if ((p - _lastSavedProgress).abs() < 0.002 && item.path == _lastSavedPath) return;
+    _lastSavedProgress = p;
+    _lastSavedPath = item.path;
     item.progress = p;
     appSettings.resumeMap[item.path] = p;
-    await appSettings.save();
+    await appSettings.saveResume();
   }
+
+  double _lastSavedProgress = -1;
+  String? _lastSavedPath;
 
   Future<void> _openCurrent() async {
     final gen = ++_playerGen;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -405,9 +406,45 @@ class LibraryService {
 
   int get totalBytes => videos.fold(0, (a, b) => a + b.size);
 
-  Future<Uint8List?> thumbnailFor(VideoItem item, {int size = 240}) async {
+  static const _thumbCap = 240;
+  static const _thumbParallel = 3;
+  final Map<String, Future<Uint8List?>> _thumbInFlight = {};
+  int _thumbActive = 0;
+  final List<Completer<void>> _thumbWaiters = [];
+
+  Future<Uint8List?> thumbnailFor(VideoItem item, {int size = 240}) {
     final key = '${item.id}:${item.modified.millisecondsSinceEpoch}:${item.size}';
-    if (_thumbs.containsKey(key)) return _thumbs[key];
+    final hit = _thumbs.remove(key);
+    if (hit != null) {
+      _thumbs[key] = hit;
+      return Future.value(hit);
+    }
+    final running = _thumbInFlight[key];
+    if (running != null) return running;
+    final f = _thumbLimited(item, key, size);
+    _thumbInFlight[key] = f;
+    f.whenComplete(() => _thumbInFlight.remove(key));
+    return f;
+  }
+
+  Future<Uint8List?> _thumbLimited(VideoItem item, String key, int size) async {
+    while (_thumbActive >= _thumbParallel) {
+      final w = Completer<void>();
+      _thumbWaiters.add(w);
+      await w.future;
+    }
+    _thumbActive++;
+    try {
+      return await _thumbLoad(item, key, size);
+    } catch (_) {
+      return null;
+    } finally {
+      _thumbActive--;
+      if (_thumbWaiters.isNotEmpty) _thumbWaiters.removeAt(0).complete();
+    }
+  }
+
+  Future<Uint8List?> _thumbLoad(VideoItem item, String key, int size) async {
     final missed = _thumbMiss[key];
     if (missed != null && DateTime.now().difference(missed) < const Duration(seconds: 20)) {
       return null;
@@ -431,6 +468,9 @@ class LibraryService {
       return null;
     }
     _thumbs[key] = data;
+    while (_thumbs.length > _thumbCap) {
+      _thumbs.remove(_thumbs.keys.first);
+    }
     _thumbMiss.remove(key);
     return data;
   }
