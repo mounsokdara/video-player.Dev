@@ -50,6 +50,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   final folderTrail = <String>[];
   bool _miniPlaying = false;
   int _openGen = 0;
+  String? _lastOpenPath;
+  DateTime _lastOpenAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -179,6 +181,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _open(VideoItem item, {List<VideoItem>? playlist}) async {
+    final now = DateTime.now();
+    if (_lastOpenPath == item.path && now.difference(_lastOpenAt) < const Duration(milliseconds: 900)) {
+      return;
+    }
+    _lastOpenPath = item.path;
+    _lastOpenAt = now;
     final gen = ++_openGen;
     await CrashLog.breadcrumb('Play ${item.path}');
     if (!mounted) return;

@@ -53,9 +53,34 @@ class PlaybackEngine extends ChangeNotifier {
   bool get hasPlayer => _player != null && !_closed;
   String get hwdecName => _hwdec ?? 'unknown';
 
-  Future<void> open(String path, {required String hwdec}) async {
+  int _openSeq = 0;
+  String? _pendingKey;
+  Future<void>? _pendingOpen;
+
+  Future<void> open(String path, {required String hwdec}) {
+    final key = '$path|$hwdec';
+    final pending = _pendingOpen;
+    if (pending != null && _pendingKey == key && !_closed) {
+      DeveloperLog.player('open skipped (duplicate in flight) path=$path');
+      return pending;
+    }
     DeveloperLog.player('open path=$path hwdec=$hwdec');
-    await _queue(() => _openBody(path, hwdec: hwdec));
+    final seq = ++_openSeq;
+    final f = _queue(() async {
+      if (seq != _openSeq) return;
+      await _openBody(path, hwdec: hwdec);
+    });
+    _pendingKey = key;
+    _pendingOpen = f;
+    void clear() {
+      if (identical(_pendingOpen, f)) {
+        _pendingKey = null;
+        _pendingOpen = null;
+      }
+    }
+
+    f.then((_) => clear(), onError: (Object _) => clear());
+    return f;
   }
 
   Future<void> _queue(Future<void> Function() job) async {
@@ -473,7 +498,14 @@ class PlaybackEngine extends ChangeNotifier {
     DeveloperLog.player('close');
     _closed = true;
     wantPlay = false;
+    _openSeq++;
     _alive.remove(this);
+    final inFlight = _inFlight;
+    if (inFlight != null) {
+      try {
+        await inFlight.timeout(const Duration(seconds: 3));
+      } catch (_) {}
+    }
     await _disposePlayer();
     super.dispose();
   }
