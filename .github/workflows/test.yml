@@ -25,12 +25,14 @@ jobs:
       - name: Analyze
         run: |
           set +e
-          flutter analyze --no-fatal-infos --format=machine > analyze.txt 2>&1
+          flutter analyze --no-fatal-infos > analyze.txt 2>&1
           code=$?
-          grep -E '^(ERROR|WARNING)\|' analyze.txt | head -30 | while IFS='|' read -r sev type code2 file line col len msg; do
-            echo "::error file=$file,line=$line::$sev $type: $msg"
+          grep -E '^\s*(error|warning) ' analyze.txt | head -25 | while read -r line; do
+            echo "::error::$(echo "$line" | cut -c1-300)"
           done
-          [ -s analyze.txt ] && [ $code -ne 0 ] && [ -z "$(grep -E '^(ERROR|WARNING)\|' analyze.txt)" ] && echo "::error::$(head -c 400 analyze.txt | tr '\n' ' ')"
+          if [ $code -ne 0 ] && ! grep -qE '^\s*(error|warning) ' analyze.txt; then
+            echo "::error::$(tail -c 500 analyze.txt | tr '\n' ' ')"
+          fi
           exit $code
       - run: flutter test
         if: hashFiles('test/**') != ''
