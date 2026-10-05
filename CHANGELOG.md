@@ -1,14 +1,5 @@
 # Changelog
 
-## 1.0.2.4
-
-Fix (mini player):
-- Stays clear of the bottom navigation bar on every device and system-bar style; the guessed nav height is gone and the real content area is used
-- Even 16 px margin on all sides, matching the page padding; side insets are no longer counted twice in landscape
-- Wide / landscape: stays in the content area and no longer parks over the navigation rail
-- Maximum size is calculated from the real area, and a crash on very short windows is fixed
-- Narrow card: the clipped title is dropped and the three buttons spread evenly; buttons are a little larger
-
 ## 1.0.2.3
 
 Performance:
@@ -28,3 +19,10 @@ Fix:
 
 Small change:
 - Added a better snackbar instead of the long, wide default snackbar
+
+Fix (mini player):
+- Stays clear of the bottom navigation bar on every device and system-bar style; the guessed nav height is gone and the real content area is used
+- Even 16 px margin on all sides, matching the page padding; side insets are no longer counted twice in landscape
+- Wide / landscape: stays in the content area and no longer parks over the navigation rail
+- Maximum size is calculated from the real area, and a crash on very short windows is fixed
+- Narrow card: the clipped title is dropped and the three buttons spread evenly; buttons are a little larger
