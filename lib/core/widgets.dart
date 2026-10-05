@@ -679,7 +679,7 @@ Future<void> showFolderEntryMenu(
           title: Text(isDir ? 'Open' : 'Play'),
           onTap: () {
             Navigator.pop(ctx);
-            onOpen?.call();
+            onOpen();
           },
         ),
       ListTile(

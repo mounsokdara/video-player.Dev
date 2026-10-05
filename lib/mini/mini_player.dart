@@ -48,7 +48,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _dismissed = false;
   bool _wasPlayingBeforePark = false;
   bool _moved = false;
-  bool _live = false;
   bool _gestureActive = false;
   int _activePointers = 0;
 
@@ -312,7 +311,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       _parked = false;
       _parkSide = 0;
       _dismissed = false;
-      _live = true;
     });
     if (wasParked) _resumeIfNeeded();
   }
@@ -356,7 +354,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   void _finalizeGesture() {
     if (!_gestureActive) return;
     _gestureActive = false;
-    _live = false;
     if (!_moved) {
       if (_parked) {
         _unpark();
@@ -378,7 +375,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       _parked = false;
       _parkSide = 0;
       _dismissed = false;
-      _live = true;
       _arrowDragging = true;
       _dragSide = effectiveSide == 0 ? 1 : effectiveSide;
     });
@@ -394,7 +390,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (!_arrowDragging) return;
     _arrowDragging = false;
     _dragSide = 0;
-    _live = false;
     _settle();
   }
 
@@ -402,7 +397,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (!_arrowDragging) return;
     _arrowDragging = false;
     _dragSide = 0;
-    _live = false;
     _settle();
   }
 

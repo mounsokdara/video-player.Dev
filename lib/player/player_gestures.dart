@@ -106,7 +106,6 @@ extension PlayerGestures on _PlayerPageState {
     _pinchBase = _zoomScale / s;
     _pinchBasePan = _zoomPan;
     _pinchStartFocal = focal;
-    _pinchStart = s;
     _showZoomHud = true;
     _zoomHudTimer?.cancel();
     if (mounted) setState(() {});
@@ -251,7 +250,6 @@ extension PlayerGestures on _PlayerPageState {
     };
     final isDouble = now.difference(last) < tapWindow;
     final rippleActive = _activeRipples > 0;
-    _tapAt = now;
     _tapPos = pos;
 
     if (!rippleActive && !isDouble && !zoneOn) {

@@ -11,7 +11,6 @@ class AndroidBridge {
   static const _ev = EventChannel('app.videoplayer/events');
 
   static Stream<Map<String, dynamic>>? _events;
-  static StreamSubscription<Map<String, dynamic>>? _keepAlive;
 
   static Stream<Map<String, dynamic>> events() {
     if (_events == null) {
@@ -20,7 +19,7 @@ class AndroidBridge {
         return <String, dynamic>{'type': '$e'};
       }).handleError((_) {});
       _events = raw.asBroadcastStream(onCancel: (_) {});
-      _keepAlive = _events!.listen((_) {});
+      _events!.listen((_) {});
     }
     return _events!;
   }

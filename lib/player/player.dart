@@ -76,7 +76,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   StreamSubscription<Map<String, dynamic>>? events;
   double _zoomScale = 1;
   final _pts = <int, Offset>{};
-  double _pinchStart = 0;
   double _pinchBase = 1;
   double? _scrub;
   Uint8List? _previewBytes;
@@ -88,7 +87,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   bool _pinching = false;
   bool _showZoomHud = false;
   Timer? _zoomHudTimer;
-  DateTime? _tapAt;
   Offset? _tapPos;
   bool _chromeHeld = false;
   bool _uiBeforeTap = true;

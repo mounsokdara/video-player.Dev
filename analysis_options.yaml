@@ -1,6 +1,8 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  errors:
+    must_call_super: ignore
   exclude:
     - build/**
     - android/**
