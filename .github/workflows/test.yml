@@ -22,7 +22,16 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
+      - name: Analyze
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos --format=machine > analyze.txt 2>&1
+          code=$?
+          grep -E '^(ERROR|WARNING)\|' analyze.txt | head -30 | while IFS='|' read -r sev type code2 file line col len msg; do
+            echo "::error file=$file,line=$line::$sev $type: $msg"
+          done
+          [ -s analyze.txt ] && [ $code -ne 0 ] && [ -z "$(grep -E '^(ERROR|WARNING)\|' analyze.txt)" ] && echo "::error::$(head -c 400 analyze.txt | tr '\n' ' ')"
+          exit $code
       - run: flutter test
         if: hashFiles('test/**') != ''
 
