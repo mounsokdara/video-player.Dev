@@ -12,10 +12,6 @@ object FlutterPrefs {
 
     fun string(c: Context, key: String): String? = p(c).getString("flutter.$key", null)
 
-    fun putBool(c: Context, key: String, value: Boolean) {
-        p(c).edit().putBoolean("flutter.$key", value).apply()
-    }
-
     fun int(c: Context, key: String, def: Int): Int =
         (p(c).all["flutter.$key"] as? Number)?.toInt() ?: def
 }
