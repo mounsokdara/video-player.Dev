@@ -13,6 +13,17 @@ class SystemBars {
   /// Last `contrast` given to [apply]: false = transparent navigation bar (player), true = system default.
   static bool lastContrast = true;
 
+  /// true everywhere except the player. On Android 15+ (targetSdk 35+) the system ignores
+  /// `navigationBarColor`, so the bar is always transparent; this drives a solid strip painted
+  /// behind it (see [SolidNavBarStrip]).
+  static final ValueNotifier<bool> solidNav = ValueNotifier<bool>(true);
+
+  static void _setSolidNav(bool v) {
+    if (solidNav.value == v) return;
+    // apply() is also called from build(); notify after the frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => solidNav.value = v);
+  }
+
   static EdgeInsets of(BuildContext context) => MediaQuery.viewPaddingOf(context);
 
   static EdgeInsets rawOf(BuildContext context) {
@@ -47,6 +58,7 @@ class SystemBars {
   static void apply({required Brightness icons, bool contrast = true, bool forceShow = false, bool? hide}) {
     iconBrightness = icons;
     lastContrast = contrast;
+    _setSolidNav(contrast);
     final shouldHide = hide ?? (alwaysHide && popupCount <= 0 && !forceShow);
     _ensureUiCallback();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -92,6 +104,39 @@ class SystemBars {
     } finally {
       onPopup(false);
     }
+  }
+}
+
+/// Solid bar behind the system navigation bar: shown on every page except the player, which keeps
+/// it fully transparent. Put it above the app's content (it ignores pointers).
+class SolidNavBarStrip extends StatelessWidget {
+  const SolidNavBarStrip({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(child: child),
+        ValueListenableBuilder<bool>(
+          valueListenable: SystemBars.solidNav,
+          builder: (context, solid, _) {
+            final h = SystemBars.rawOf(context).bottom;
+            final landscapeSide = MediaQuery.orientationOf(context) == Orientation.landscape;
+            if (!solid || h <= 0 || landscapeSide) return const SizedBox.shrink();
+            return Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: h,
+              child: IgnorePointer(
+                child: ColoredBox(color: Theme.of(context).colorScheme.surface),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 }
 

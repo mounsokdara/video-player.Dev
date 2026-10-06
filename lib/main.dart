@@ -139,7 +139,7 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 textScaler: TextScaler.linear(scale),
                 boldText: appSettings.boldText,
               ),
-              child: child ?? const SizedBox.shrink(),
+              child: SolidNavBarStrip(child: child ?? const SizedBox.shrink()),
             );
           },
           initialRoute: WidgetsBinding.instance.platformDispatcher.defaultRouteName,
