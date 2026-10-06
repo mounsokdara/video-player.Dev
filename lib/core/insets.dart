@@ -18,6 +18,18 @@ class SystemBars {
   /// behind it (see [SolidNavBarStrip]).
   static final ValueNotifier<bool> solidNav = ValueNotifier<bool>(true);
 
+  /// Color of the strip. null = the page surface. The home tabs set the color of their bottom
+  /// NavigationBar so the strip continues it; the player (watch layout) uses the plain surface.
+  static final ValueNotifier<Color?> stripColor = ValueNotifier<Color?>(null);
+
+  /// What the home tabs asked for, restored when the player closes.
+  static Color? homeStrip;
+
+  static void setStrip(Color? c) {
+    if (stripColor.value == c) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => stripColor.value = c);
+  }
+
   static void _setSolidNav(bool v) {
     if (solidNav.value == v) return;
     // apply() is also called from build(); notify after the frame.
@@ -107,8 +119,8 @@ class SystemBars {
   }
 }
 
-/// Solid bar behind the system navigation bar: shown on every page except the player, which keeps
-/// it fully transparent. Put it above the app's content (it ignores pointers).
+/// Solid bar behind the system navigation bar: shown on every page except the fullscreen player,
+/// which keeps it fully transparent. Put it above the app's content (it ignores pointers).
 class SolidNavBarStrip extends StatelessWidget {
   const SolidNavBarStrip({super.key, required this.child});
   final Widget child;
@@ -118,20 +130,19 @@ class SolidNavBarStrip extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(child: child),
-        ValueListenableBuilder<bool>(
-          valueListenable: SystemBars.solidNav,
-          builder: (context, solid, _) {
+        ListenableBuilder(
+          listenable: Listenable.merge([SystemBars.solidNav, SystemBars.stripColor]),
+          builder: (context, _) {
             final h = SystemBars.rawOf(context).bottom;
-            final landscapeSide = MediaQuery.orientationOf(context) == Orientation.landscape;
-            if (!solid || h <= 0 || landscapeSide) return const SizedBox.shrink();
+            final side = MediaQuery.orientationOf(context) == Orientation.landscape;
+            if (!SystemBars.solidNav.value || h <= 0 || side) return const SizedBox.shrink();
+            final color = SystemBars.stripColor.value ?? Theme.of(context).colorScheme.surface;
             return Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               height: h,
-              child: IgnorePointer(
-                child: ColoredBox(color: Theme.of(context).colorScheme.surface),
-              ),
+              child: IgnorePointer(child: ColoredBox(color: color)),
             );
           },
         ),

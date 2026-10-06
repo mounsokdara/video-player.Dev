@@ -301,7 +301,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     SystemBars.alwaysHide = appSettings.alwaysHideNavBar;
     final sheetOpen = SystemBars.popupCount > 0;
     final hide = !sheetOpen && !_watch && (appSettings.alwaysHideNavBar || !showUi);
-    SystemBars.apply(icons: Brightness.light, contrast: false, hide: hide);
+    // Watch layout (not full screen): a solid navigation bar over the page. Full screen: transparent.
+    SystemBars.setStrip(null);
+    SystemBars.apply(icons: Brightness.light, contrast: _watch, hide: hide);
   }
 
   void _setYtMax(bool max) {
@@ -743,6 +745,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     AndroidBridge.setPipEnabled(false);
     AndroidBridge.setOrientation('none');
     SystemBars.alwaysHide = false;
+    SystemBars.setStrip(SystemBars.homeStrip);
     SystemBars.apply(icons: Brightness.light, contrast: true, hide: false);
     super.dispose();
   }
@@ -859,7 +862,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     final watchLike = t < 0.85;
     final bg = Color.lerp(Theme.of(context).colorScheme.surface, Colors.black, t)!;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.overlay(icons: (watchLike && light) ? Brightness.dark : Brightness.light, contrast: false),
+      value: SystemBars.overlay(icons: (watchLike && light) ? Brightness.dark : Brightness.light, contrast: watchLike),
       child: Scaffold(
         backgroundColor: bg,
         resizeToAvoidBottomInset: false,

@@ -701,7 +701,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final pad = SystemBars.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final onTop = ModalRoute.of(context)?.isCurrent ?? true;
+    // The strip behind the system nav bar continues the bottom NavigationBar (M3 surfaceContainer);
+    // with no bottom bar (rail / one tab) it is the page surface.
+    SystemBars.homeStrip = (!wide && tabs.length > 1) ? Theme.of(context).colorScheme.surfaceContainer : null;
     if (onTop) {
+      SystemBars.setStrip(SystemBars.homeStrip);
       SystemBars.alwaysHide = false;
       SystemBars.apply(icons: dark ? Brightness.light : Brightness.dark, contrast: true, hide: false);
     }
