@@ -5,7 +5,7 @@
   Dev Test workflow passes and the dev APK works, and only then publish the
   change to the public repo. Never edit the public repo directly without a deep testing
 -->
-> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player).this repo workflow only for analyze and build a test APK, no releases are published. unless you haveb a full copy of this
+> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player).this repo workflow only for analyze and build a test APK, no releases are published. unless you have a full copy of this
 
 # Video Player
 
