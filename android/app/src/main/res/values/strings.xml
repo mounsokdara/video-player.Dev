@@ -10,14 +10,6 @@
     <string name="crash_close">Close</string>
     <string name="crash_copied">Copied. Paste it in chat.</string>
     <string name="crash_clip_label">crash</string>
-    <string name="about_title">About</string>
-    <string name="about_created_by">Created by</string>
-    <string name="about_version">Version</string>
-    <string name="about_licenses">Open source licenses</string>
-    <string name="about_source">Source on GitHub</string>
-    <string name="about_developer_options">Developer options</string>
-    <string name="about_console">Console</string>
-    <string name="about_console_desc">Debug log and crash breadcrumbs</string>
     <string name="console_title">Console</string>
     <string name="console_copy">Copy</string>
     <string name="console_clear">Clear</string>

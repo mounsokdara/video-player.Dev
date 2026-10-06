@@ -63,3 +63,10 @@ object NativeConstants {
         const val CLEAR_LOGS = "clearLogs"
     }
 }
+
+/** Read by LicensesActivity only. The About page itself is Dart: keep VERSION in sync with lib/about/about_info.dart. */
+object AboutInfo {
+    const val NAME = "Video Player"
+    const val AUTHOR = "Moun Sokdara"
+    const val VERSION = "1.0.2.3"
+}

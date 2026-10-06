@@ -147,7 +147,6 @@ open class MainActivity : FlutterActivity() {
                         "sdkInt" -> result.success(Build.VERSION.SDK_INT)
                         "openPage" -> {
                             val cls = when (call.argument<String>("page")) {
-                                "about" -> AboutActivity::class.java
                                 "licenses" -> LicensesActivity::class.java
                                 "console" -> ConsoleActivity::class.java
                                 else -> null

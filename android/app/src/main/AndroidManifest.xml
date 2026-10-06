@@ -82,12 +82,6 @@
         </activity>
 
         <activity
-            android:name=".AboutActivity"
-            android:exported="true"
-            android:label="@string/about_title"
-            android:theme="@style/Theme.VideoPlayer.Page" />
-
-        <activity
             android:name=".LicensesActivity"
             android:exported="true"
             android:label="@string/licenses_title"

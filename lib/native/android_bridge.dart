@@ -372,7 +372,7 @@ class AndroidBridge {
     } catch (_) {}
   }
 
-  /// Opens a native XML page: 'about', 'licenses' or 'console'.
+  /// Opens a native XML page: 'licenses' or 'console'. (About is a Dart page.)
   static Future<void> openPage(String page) async {
     try {
       await _ch.invokeMethod('openPage', {'page': page});

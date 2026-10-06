@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:video_player_app/native/android_bridge.dart';
-import 'package:video_player_app/settings/about.dart';
+import 'package:video_player_app/about/about_info.dart';
+import 'package:video_player_app/about/about_page.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/player/hud.dart';
 import 'package:video_player_app/core/insets.dart';
@@ -302,7 +303,8 @@ class MoreHub extends StatelessWidget {
               title: const Text('About'),
               subtitle: Text('Video Player ${AboutInfo.displayVersion}'),
               onTap: () async {
-                await AndroidBridge.openPage('about');
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutPage()));
+                onChanged();
               },
             ),
           ]),
