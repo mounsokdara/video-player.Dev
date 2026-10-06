@@ -84,7 +84,7 @@ extension PlayerGestures on _PlayerPageState {
         _scrub != null &&
         c != null) {
       final dur = c.value.duration.inMilliseconds;
-      unawaited(c.seekTo(Duration(milliseconds: (_scrub! * dur).round())));
+      unawaited(c.seekTo(Duration(milliseconds: (_scrub! * dur).round()), fast: true));
     }
     panKind = '';
     panStart = null;

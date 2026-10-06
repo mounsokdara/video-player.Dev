@@ -61,10 +61,9 @@ jobs:
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > android/app/upload-keystore.jks
-            printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' "$KS_PASS" "$KEY_PASS" "$KEY_ALIAS" > android/key.properties
-          fi
+          test -n "$KS_B64" || { echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing: dev APK would not match the release signature"; exit 1; }
+          echo "$KS_B64" | base64 -d > android/app/upload-keystore.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' "$KS_PASS" "$KEY_PASS" "$KEY_ALIAS" > android/key.properties
       - run: flutter build apk --release
       - name: Sign + verify APK (apksigner v1/v2/v3)
         env:
@@ -72,11 +71,12 @@ jobs:
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          if [ -f android/key.properties ]; then
-            OUTDIR=build/app/outputs/flutter-apk
-            KS_FILE=android/app/upload-keystore.jks bash scripts/sign-apk.sh "$OUTDIR/app-release.apk" "$OUTDIR/app-release-signed.apk"
-            mv -f "$OUTDIR/app-release-signed.apk" "$OUTDIR/app-release.apk"
-          fi
+          OUTDIR=build/app/outputs/flutter-apk
+          KS_FILE=android/app/upload-keystore.jks bash scripts/sign-apk.sh "$OUTDIR/app-release.apk" "$OUTDIR/app-release-signed.apk" | tee sign.log
+          # Public release key fingerprint (from the private vault). The dev APK must carry the same one.
+          WANT=fd5c65cc4aba8e32aea3182b5ab8ebc4c0b52e9f0861a8dfca721d02c71b7db6
+          grep -q "signed with the expected key ($WANT)" sign.log || { echo "::error::dev APK is not signed with the release key"; exit 1; }
+          mv -f "$OUTDIR/app-release-signed.apk" "$OUTDIR/app-release.apk"
       - run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/com.mounsokdara.video_player.dev.apk
       - uses: actions/upload-artifact@v4
         with:

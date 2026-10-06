@@ -479,9 +479,23 @@ class PlaybackEngine extends ChangeNotifier {
     }
   }
 
-  Future<void> seekTo(Duration d) async {
-    DeveloperLog.player('seek ' + d.inMilliseconds.toString() + 'ms');
-    await _player?.seek(d);
+  /// [fast] snaps to the nearest keyframe instead of decoding up to the exact
+  /// frame. Use it for scrubbing; exact seeks are slow on long-GOP or
+  /// software-decoded (HDR conversion) video.
+  Future<void> seekTo(Duration d, {bool fast = false}) async {
+    DeveloperLog.player('seek ' + d.inMilliseconds.toString() + 'ms' + (fast ? ' (keyframe)' : ''));
+    final player = _player;
+    if (player == null) return;
+    if (fast) {
+      try {
+        final platform = player.platform;
+        if (platform is NativePlayer) {
+          await (platform as dynamic).command(['seek', (d.inMilliseconds / 1000).toStringAsFixed(3), 'absolute+keyframes']);
+          return;
+        }
+      } catch (_) {}
+    }
+    await player.seek(d);
   }
 
   Future<void> setVolume(double v) async {

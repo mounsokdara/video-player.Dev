@@ -1620,7 +1620,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                                   onChangeEnd: (v) async {
                                     _holdChrome(false);
                                     if (c == null) return;
-                                    await c.seekTo(Duration(milliseconds: (v * dur.inMilliseconds).round()));
+                                    await c.seekTo(Duration(milliseconds: (v * dur.inMilliseconds).round()), fast: true);
                                     setState(() {
                                       _scrub = null;
                                       _previewBytes = null;
