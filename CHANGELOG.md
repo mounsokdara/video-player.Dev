@@ -6,6 +6,12 @@ Equalizer:
 - Large screens (720 dp and wider): two-pane layout with taller band sliders and a dB ruler on the left, presets and bass / surround in side cards, centred with a maximum width
 - Each band shows its current dB value; phones keep the single column (capped width on tall tablets)
 
+Settings:
+- On phones (tabs sidebar hidden) opening a category such as Accessibility, and going back, uses the system slide transition; the open category still survives rotation / resize
+
+Cleanup:
+- Removed the unused package_info_plus dependency
+
 System navigation bar:
 - Bottom sheets now end above the navigation bar instead of scrolling under it, so the last action (for example Properties) is never covered by the bar buttons
 - About and Open source licenses pages keep clear of the side / bottom bar and cutouts

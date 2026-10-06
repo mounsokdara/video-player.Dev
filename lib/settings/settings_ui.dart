@@ -68,32 +68,51 @@ class _SettingsHostState extends State<SettingsHost> {
   ///  - large screen: sidebar selects this one, or the first when still null.
   int? _picked;
 
+  final _navKey = GlobalKey<NavigatorState>();
+
   void _close() => SystemNavigator.pop();
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= kSettingsSidebarWidth;
     if (!wide) {
+      // Phones / sidebar hidden: the hub and the opened category are pages of a nested Navigator,
+      // so opening and closing a category uses the system slide (in from the right, out to the right).
+      // [_picked] stays the source of truth, so a resize or rotation keeps the open category.
       final i = _picked;
       return PopScope(
         canPop: i == null,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) setState(() => _picked = null);
+          if (!didPop) _navKey.currentState?.maybePop();
         },
-        child: Scaffold(
-          body: i == null
-              ? SettingsHub(
+        child: Navigator(
+          key: _navKey,
+          pages: [
+            MaterialPage<void>(
+              key: const ValueKey('settings-hub'),
+              child: Scaffold(
+                body: SettingsHub(
                   onChanged: widget.onChanged,
                   onBack: _close,
                   onOpen: (n) => setState(() => _picked = n),
-                )
-              : _SettingsBack(
-                  onBack: () => setState(() => _picked = null),
-                  child: KeyedSubtree(
-                    key: ValueKey('page$i'),
-                    child: _settingsCategories[i].build(widget.onChanged),
-                  ),
                 ),
+              ),
+            ),
+            if (i != null)
+              MaterialPage<void>(
+                key: ValueKey('settings-cat$i'),
+                child: _SettingsBack(
+                  onBack: () => _navKey.currentState?.maybePop(),
+                  child: _settingsCategories[i].build(widget.onChanged),
+                ),
+              ),
+          ],
+          onDidRemovePage: (page) {
+            final key = page.key;
+            if (_picked != null && key is ValueKey<String> && key.value.startsWith('settings-cat')) {
+              setState(() => _picked = null);
+            }
+          },
         ),
       );
     }
