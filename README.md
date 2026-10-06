@@ -3,11 +3,9 @@
   This is the DEV copy of mounsokdara/video-player.
   Make and test every change HERE first (branch dev/** or main), confirm the
   Dev Test workflow passes and the dev APK works, and only then publish the
-  change to the public repo. Never edit the public repo directly.
+  change to the public repo. Never edit the public repo directly without a deep testing
 -->
-> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
-
-> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player). Private. Workflows here only analyze and build a test APK; no releases are published.
+> **Dev/test copy** of [mounsokdara/video-player](https://github.com/mounsokdara/video-player).this repo workflow only for analyze and build a test APK, no releases are published. unless you haveb a full copy of this
 
 # Video Player
 
@@ -21,7 +19,7 @@ Local-only Material 3 Android player. Playback uses libmpv (media_kit). Files st
 - Optional hidden files (dot-folders and hidden videos)
 - Auto-refresh when videos are added, changed, or deleted
 - Scan on start (optional)
-- Videos tab: list or grid, search, filters (All / Bookmarked / Pinned)
+- Videos tab: list or grid, search, filters, All, Bookmarked, Pinned
 - Sort by name, date, size, duration, or folder (ascending or descending)
 - Tap anywhere on a video row to open; checkbox is on the right while selecting
 - Hold a clip for actions (no 3-dot on list rows)
