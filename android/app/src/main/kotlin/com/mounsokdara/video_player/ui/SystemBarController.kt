@@ -16,8 +16,16 @@ class SystemBarController(private val activity: Activity) {
     private var hideGen = 0
     private var uiListenerAttached = false
 
+    /** The window's own navigation bar color, so leaving a transparent screen (the player) restores it. */
+    private var defaultNavColor: Int? = null
+
+    private fun rememberDefaultNavColor(window: Window) {
+        if (defaultNavColor == null) defaultNavColor = window.navigationBarColor
+    }
+
     fun enableEdgeToEdge() {
         val window = activity.window
+        rememberDefaultNavColor(window)
         try {
             if (Build.VERSION.SDK_INT >= 30) {
                 window.setDecorFitsSystemWindows(false)
@@ -86,6 +94,7 @@ class SystemBarController(private val activity: Activity) {
             window.isStatusBarContrastEnforced = false
         }
         window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
             val controller = window.insetsController ?: window.decorView.windowInsetsController
@@ -108,6 +117,12 @@ class SystemBarController(private val activity: Activity) {
     private fun showBars(window: Window, lightIcons: Boolean, contrast: Boolean) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.TRANSPARENT
+        // No contrast = the player: fully transparent navigation bar. Otherwise the system default.
+        if (!contrast) {
+            window.navigationBarColor = Color.TRANSPARENT
+        } else {
+            defaultNavColor?.let { window.navigationBarColor = it }
+        }
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
             val controller = window.insetsController ?: window.decorView.windowInsetsController

@@ -10,6 +10,9 @@ class SystemBars {
   static bool alwaysHide = false;
   static Brightness iconBrightness = Brightness.light;
 
+  /// Last `contrast` given to [apply]: false = transparent navigation bar (player), true = system default.
+  static bool lastContrast = true;
+
   static EdgeInsets of(BuildContext context) => MediaQuery.viewPaddingOf(context);
 
   static EdgeInsets rawOf(BuildContext context) {
@@ -29,6 +32,10 @@ class SystemBars {
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
+      // Only without contrast (the player): a fully transparent bar. Everywhere else the color is
+      // left to the system.
+      systemNavigationBarColor: contrast ? null : Colors.transparent,
+      systemNavigationBarDividerColor: contrast ? null : Colors.transparent,
       statusBarIconBrightness: status,
       statusBarBrightness: bar,
       systemNavigationBarIconBrightness: status,
@@ -39,6 +46,7 @@ class SystemBars {
 
   static void apply({required Brightness icons, bool contrast = true, bool forceShow = false, bool? hide}) {
     iconBrightness = icons;
+    lastContrast = contrast;
     final shouldHide = hide ?? (alwaysHide && popupCount <= 0 && !forceShow);
     _ensureUiCallback();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -60,7 +68,7 @@ class SystemBars {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         unawaited(AndroidBridge.applySystemBars(
           lightIcons: iconBrightness == Brightness.light,
-          contrast: true,
+          contrast: lastContrast,
           hide: true,
         ));
       }
@@ -70,10 +78,10 @@ class SystemBars {
   static void onPopup(bool open) {
     if (open) {
       popupCount++;
-      apply(icons: iconBrightness, forceShow: true);
+      apply(icons: iconBrightness, contrast: lastContrast, forceShow: true);
     } else {
       if (popupCount > 0) popupCount--;
-      apply(icons: iconBrightness);
+      apply(icons: iconBrightness, contrast: lastContrast);
     }
   }
 

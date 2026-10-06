@@ -301,7 +301,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     SystemBars.alwaysHide = appSettings.alwaysHideNavBar;
     final sheetOpen = SystemBars.popupCount > 0;
     final hide = !sheetOpen && !_watch && (appSettings.alwaysHideNavBar || !showUi);
-    SystemBars.apply(icons: Brightness.light, contrast: true, hide: hide);
+    SystemBars.apply(icons: Brightness.light, contrast: false, hide: hide);
   }
 
   void _setYtMax(bool max) {
@@ -859,7 +859,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     final watchLike = t < 0.85;
     final bg = Color.lerp(Theme.of(context).colorScheme.surface, Colors.black, t)!;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.overlay(icons: (watchLike && light) ? Brightness.dark : Brightness.light),
+      value: SystemBars.overlay(icons: (watchLike && light) ? Brightness.dark : Brightness.light, contrast: false),
       child: Scaffold(
         backgroundColor: bg,
         resizeToAvoidBottomInset: false,
@@ -1235,7 +1235,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
 
   Widget _playerChrome(Widget body) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.overlay(icons: Brightness.light),
+      value: SystemBars.overlay(icons: Brightness.light, contrast: false),
       child: Scaffold(
         backgroundColor: Colors.black,
         resizeToAvoidBottomInset: false,

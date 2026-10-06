@@ -3,6 +3,7 @@
 ## Unreleased (dev)
 
 Navigation bar:
+- In the player (full screen, sheets and dialogs included) the navigation bar is fully transparent, no scrim; leaving the player returns to the system default
 - No hardcoded navigation bar color any more: the app no longer forces it transparent (themes, native window setup, Flutter overlay style) and no longer paints its own solid strip over it; the system default is used, with the system contrast scrim
 - Pages still keep their content clear of the bar; the snackbar no longer overlaps the navigation buttons
 
