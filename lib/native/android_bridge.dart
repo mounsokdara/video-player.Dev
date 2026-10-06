@@ -26,7 +26,7 @@ class AndroidBridge {
 
   /// Opens the native Settings activity (separate screen, own back stack).
   /// Opens a screen that has its own activity (`/settings`, `/general`, `/video`, `/accessibility`,
-  /// `/theme`, `/about`, `/equalizer`, `/licenses`, `/console`) with the system slide transition.
+  /// `/theme`, `/about`, `/equalizer`, `/licenses`, `/changelog`, `/console`) with the system slide transition.
   /// False when there is no such activity (callers fall back to an in-app route).
   static Future<bool> openRoute(String route) async {
     try {

@@ -234,6 +234,25 @@
         </activity>
 
         <activity
+            android:name=".ChangelogActivity"
+            android:exported="true"
+            android:label="@string/changelog_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/changelog" />
+        </activity>
+
+        <activity
             android:name=".ConsoleActivity"
             android:exported="true"
             android:label="@string/console_title"

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/about/about_page.dart';
 import 'package:video_player_app/about/console_page.dart';
+import 'package:video_player_app/about/changelog_page.dart';
 import 'package:video_player_app/about/licenses_page.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/library/home.dart';
@@ -105,6 +106,8 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
         return const AboutPage();
       case '/licenses':
         return const SystemBarSafeZone(child: LicensesPage());
+      case '/changelog':
+        return const SystemBarSafeZone(child: ChangelogPage());
       case '/console':
         return const ConsolePage();
       default:

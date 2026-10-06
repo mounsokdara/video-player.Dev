@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_widgets.dart';
+import 'package:video_player_app/about/changelog_page.dart';
+import 'package:video_player_app/about/update_check.dart';
 import 'package:video_player_app/about/developer_options.dart';
 import 'package:video_player_app/about/github_profile.dart';
 import 'package:video_player_app/about/licenses_page.dart';
@@ -68,7 +70,7 @@ class _AboutPageState extends State<AboutPage> {
                     QuickAction(
                       icon: const Icon(Icons.history),
                       label: 'Changelog',
-                      onTap: () => openExternal(AboutInfo.changelogUrl),
+                      onTap: () => openPage(context, '/changelog', () => const SystemBarSafeZone(child: ChangelogPage())),
                     ),
                     QuickAction(
                       icon: const GithubIcon(),
@@ -76,9 +78,9 @@ class _AboutPageState extends State<AboutPage> {
                       onTap: () => openExternal(AboutInfo.repoUrl),
                     ),
                     QuickAction(
-                      icon: const Icon(Icons.new_releases_outlined),
-                      label: 'Releases',
-                      onTap: () => openExternal(AboutInfo.releasesUrl),
+                      icon: const Icon(Icons.system_update_outlined),
+                      label: 'Check For Update',
+                      onTap: () => checkForUpdate(context),
                     ),
                     QuickAction(
                       icon: const Icon(Icons.bug_report_outlined),

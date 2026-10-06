@@ -9,10 +9,10 @@ class AboutInfo {
 
   static const githubLogin = 'mounsokdara';
   static const profileUrl = 'https://github.com/$githubLogin';
-  static const repoUrl = 'https://github.com/mounsokdara/video-player';
+  static const repoSlug = '$githubLogin/video-player';
+  static const repoUrl = 'https://github.com/$repoSlug';
   static const releasesUrl = '$repoUrl/releases';
   static const issuesUrl = '$repoUrl/issues';
-  static const changelogUrl = '$repoUrl/blob/main/CHANGELOG.md';
 
   /// Shown under the author's name.
   static const authorRole = 'Lead Developer';

@@ -23,6 +23,10 @@ Settings:
 - Screens that have their own activity (Settings categories, About, Equalizer, Open source licenses, Console) always open as that activity with the system slide transition, like Settings from the More tab; if an activity is unavailable the in-app page is used. The player's own Equalizer button stays in-app (opening an activity there would trigger picture-in-picture)
 - The equalizer is re-applied when the app resumes, so changes made in its activity take effect
 
+About:
+- "Releases" is now "Check For Update": reads the newest GitHub release, compares it with the installed version and offers the APK download
+- Changelog is now an in-app page (own activity, system slide) that lists the notes of all GitHub releases instead of opening CHANGELOG.md; the last answer is saved as release_notes.json in the app's own cache folder (internal app data, not Android/data), so it also opens offline
+
 Tabs:
 - Switching between Videos / Folders / More (bottom bar and large-screen rail) now slides and fades in the direction of the tab, instead of an instant swap
 

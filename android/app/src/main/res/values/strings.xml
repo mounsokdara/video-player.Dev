@@ -3,6 +3,7 @@
     <string name="app_name">Video Player</string>
     <string name="settings_title">Settings</string>
     <string name="licenses_title">Open source licenses</string>
+    <string name="changelog_title">Changelog</string>
     <string name="console_title">Console</string>
     <string name="about_title">About</string>
     <string name="equalizer_title">Equalizer</string>

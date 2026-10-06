@@ -58,6 +58,7 @@ class AppNative(
                     "/about" -> AboutActivity::class.java
                     "/equalizer" -> EqualizerActivity::class.java
                     "/licenses" -> LicensesActivity::class.java
+                    "/changelog" -> ChangelogActivity::class.java
                     "/console" -> ConsoleActivity::class.java
                     "/quick-actions" -> QuickActionsActivity::class.java
                     "/title-bar" -> TitleBarButtonsActivity::class.java
