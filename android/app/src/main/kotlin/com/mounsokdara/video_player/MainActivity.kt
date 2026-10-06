@@ -80,12 +80,10 @@ open class MainActivity : FlutterActivity() {
             isPlaying
         ) { isPlaying = it }
         appNative = AppNative(this, systemBars, audioFocus, equalizer)
+        applyRotationAnimation()
         super.onCreate(savedInstanceState)
-        // Rotate with a cross-fade; the default animation shows a black backdrop.
-        window.attributes = window.attributes.apply {
-            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE
-        }
         systemBars.enableEdgeToEdge()
+        applyRotationAnimation()
         NativeCrashLog.installHook(this) { emit(it) }
         handleIncoming(intent)
     }
@@ -104,13 +102,33 @@ open class MainActivity : FlutterActivity() {
         super.onDestroy()
     }
 
+    /**
+     * Rotate with a cross-fade. The default animation tilts the whole window over a
+     * black backdrop, which shows up as a black flicker. Re-applied on resume/focus
+     * because window attribute updates elsewhere can reset the hint.
+     */
+    private fun applyRotationAnimation() {
+        try {
+            val lp = window.attributes
+            if (lp.rotationAnimation != WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE) {
+                lp.rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE
+                window.attributes = lp
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) systemBars.reapply()
+        if (hasFocus) {
+            applyRotationAnimation()
+            systemBars.reapply()
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        applyRotationAnimation()
         if (::systemBars.isInitialized) systemBars.reapply()
     }
 
