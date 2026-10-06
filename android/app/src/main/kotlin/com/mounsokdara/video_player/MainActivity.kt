@@ -145,6 +145,19 @@ open class MainActivity : FlutterActivity() {
                     if (appNative.handleLocal(call.method, call, result)) return@setMethodCallHandler
                     when (call.method) {
                         "sdkInt" -> result.success(Build.VERSION.SDK_INT)
+                        "openPage" -> {
+                            val cls = when (call.argument<String>("page")) {
+                                "licenses" -> LicensesActivity::class.java
+                                "console" -> ConsoleActivity::class.java
+                                else -> null
+                            }
+                            if (cls == null) {
+                                result.error("ARG", "page", null)
+                            } else {
+                                startActivity(Intent(this, cls))
+                                result.success(true)
+                            }
+                        }
                         "hasAllFilesAccess" -> {
                             result.success(
                                 if (Build.VERSION.SDK_INT >= 30)
@@ -247,7 +260,6 @@ open class MainActivity : FlutterActivity() {
                             wantPip = call.argument<Boolean>("on") ?: false
                             result.success(wantPip)
                         }
-                        "isPip" -> result.success(Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode)
                         "preparePreview" -> {
                             val path = call.argument<String>("path")
                             io.execute { bindPreview(path) }

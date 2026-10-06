@@ -21,7 +21,7 @@ import androidx.core.view.WindowInsetsCompat
  *   (fixed bottom buttons) the bottom inset goes to [root] instead.
  */
 object SafeZone {
-    fun install(activity: Activity, root: View, scrollers: List<View> = emptyList(), forceDarkSurface: Boolean = false) {
+    fun install(activity: Activity, root: View, scrollers: List<View> = emptyList()) {
         val window = activity.window
         WindowCompat.setDecorFitsSystemWindows(window, false)
         @Suppress("DEPRECATION")
@@ -55,8 +55,7 @@ object SafeZone {
         }
         ViewCompat.requestApplyInsets(root)
 
-        val night = forceDarkSurface ||
-            (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val night = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, root).apply {
             isAppearanceLightStatusBars = !night
             isAppearanceLightNavigationBars = !night

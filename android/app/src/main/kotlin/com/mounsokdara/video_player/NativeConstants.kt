@@ -57,11 +57,15 @@ object NativeConstants {
         const val REQUEST_AUDIO_FOCUS = "requestAudioFocus"
         const val ABANDON_AUDIO_FOCUS = "abandonAudioFocus"
         const val APPLY_EQUALIZER = "applyEqualizer"
-        const val OPEN_CRASH_REPORT = "openCrashReport"
         const val OPEN_SETTINGS = "openSettings"
         const val DEBUG_LOG = "debugLog"
         const val CLEAR_LOGS = "clearLogs"
-        const val READ_DEBUG_LOG = "readDebugLog"
-        const val PEEK_CRASH = "peekCrash"
     }
+}
+
+/** Read by LicensesActivity only. The About page itself is Dart: keep VERSION in sync with lib/about/about_info.dart. */
+object AboutInfo {
+    const val NAME = "Video Player"
+    const val AUTHOR = "Moun Sokdara"
+    const val VERSION = "1.0.2.3"
 }

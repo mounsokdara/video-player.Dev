@@ -47,13 +47,6 @@ class AppNative(
                 result.success(true)
                 return true
             }
-            NativeConstants.Method.OPEN_CRASH_REPORT -> {
-                val intent = Intent(activity, CrashReportActivity::class.java)
-                call.argument<String>("report")?.let { intent.putExtra(CrashReportActivity.EXTRA_REPORT, it) }
-                activity.startActivity(intent)
-                result.success(true)
-                return true
-            }
             NativeConstants.Method.OPEN_SETTINGS -> {
                 activity.startActivity(Intent(activity, SettingsActivity::class.java))
                 result.success(true)
@@ -68,14 +61,6 @@ class AppNative(
                 DeveloperLog.append(activity, "__clear__")
                 NativeCrashLog.clear(activity)
                 result.success(true)
-                return true
-            }
-            NativeConstants.Method.READ_DEBUG_LOG -> {
-                result.success(DeveloperLog.read(activity))
-                return true
-            }
-            NativeConstants.Method.PEEK_CRASH -> {
-                result.success(NativeCrashLog.peek(activity))
                 return true
             }
             else -> return false

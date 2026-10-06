@@ -1,4 +1,6 @@
-/// Single source of truth for the About, Open source licenses and Console pages (all Dart).
+/// Single source of truth for the About page.
+/// Keep [displayVersion] in sync with AboutInfo.VERSION in NativeConstants.kt
+/// (only the native Open source licenses page still reads that copy).
 class AboutInfo {
   AboutInfo._();
 

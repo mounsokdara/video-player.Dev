@@ -82,10 +82,16 @@
         </activity>
 
         <activity
-            android:name=".CrashReportActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
-            android:excludeFromRecents="true" />
+            android:name=".LicensesActivity"
+            android:exported="true"
+            android:label="@string/licenses_title"
+            android:theme="@style/Theme.VideoPlayer.Page" />
+
+        <activity
+            android:name=".ConsoleActivity"
+            android:exported="true"
+            android:label="@string/console_title"
+            android:theme="@style/Theme.VideoPlayer.Page" />
 
         <activity
             android:name=".SettingsActivity"
