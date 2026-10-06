@@ -4,6 +4,8 @@ analyzer:
   errors:
     must_call_super: ignore
     invalid_use_of_protected_member: ignore
+    unused_field: ignore
+    unused_element: ignore
     invalid_null_aware_operator: ignore
   exclude:
     - build/**
