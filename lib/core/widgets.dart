@@ -801,7 +801,7 @@ Future<void> showFolderEntryMenu(
           if (!context.mounted) return;
           final next = await promptRename(context, path, isDir: isDir);
           if (next != null) {
-            final dest = await AndroidBridge.renamePath(path, next);
+            final dest = await library.renameEntry(path, next);
             if (dest == null && context.mounted) showAllFilesFailed(context, 'Rename');
             onChanged();
           }

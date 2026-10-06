@@ -79,11 +79,9 @@ class LibraryService {
     if (clipCut) {
       final moved = await AndroidBridge.movePath(src, dest);
       if (moved == null) return false;
-      final i = videos.indexWhere((v) => v.path == src);
-      if (i >= 0) {
-        videos[i] = videos[i].copyWith(path: moved, title: p.basename(moved));
-      }
+      _movePrefix(src, moved);
       _rebuildFolders();
+      unawaited(AndroidBridge.scanPaths([src, moved]));
       return true;
     }
     final copied = await AndroidBridge.copyPath(src, dest);
@@ -193,6 +191,7 @@ class LibraryService {
       for (final m in indexed) {
         final path = m['path'] as String? ?? '';
         if (path.isEmpty || seen.contains(path)) continue;
+        if (!File(path).existsSync()) continue; // stale MediaStore row
         if (!looksLikeVideo(path, mime: m['mime'] as String?)) continue;
         if (!hidden && _isHiddenPath(path)) continue;
         if (settings.skipNomedia && _underNomedia(path)) continue;
@@ -202,7 +201,7 @@ class LibraryService {
           VideoItem(
             id: '${m['id'] ?? path}',
             path: path,
-            title: m['name'] as String? ?? p.basename(path),
+            title: p.basename(path),
             folder: m['folder'] as String? ?? p.dirname(path),
             size: (m['size'] as num?)?.toInt() ?? 0,
             modified: DateTime.fromMillisecondsSinceEpoch((m['modified'] as num?)?.toInt() ?? 0),
@@ -233,6 +232,7 @@ class LibraryService {
             for (final a in assets) {
               final path = _assetPath(a);
               if (path == null || path.isEmpty || seen.contains(path)) continue;
+              if (!File(path).existsSync()) continue;
               if (!looksLikeVideo(path, mime: a.mimeType)) continue;
               if (!hidden && _isHiddenPath(path)) continue;
               if (settings.skipNomedia && _underNomedia(path)) continue;
@@ -307,12 +307,11 @@ class LibraryService {
       if (!settings.showHiddenFolders && _isHiddenPath(path)) continue;
       if (settings.skipNomedia && _underNomedia(path)) continue;
       seen.add(path);
-      final name = m['name'] as String? ?? p.basename(path);
       into.add(
         VideoItem(
           id: path,
           path: path,
-          title: name,
+          title: p.basename(path),
           folder: m['folder'] as String? ?? p.dirname(path),
           size: (m['size'] as num?)?.toInt() ?? 0,
           modified: DateTime.fromMillisecondsSinceEpoch((m['modified'] as num?)?.toInt() ?? 0),
@@ -507,13 +506,50 @@ class LibraryService {
     return ok;
   }
 
-  Future<VideoItem?> rename(VideoItem item, String newName) async {
-    final dest = await AndroidBridge.renamePath(item.path, newName);
+  /// Renames a file or folder on disk. The name shown is always the basename of the real path, never a
+  /// stored copy, and everything keyed by path (bookmarks, pins, resume, speed) follows the new path.
+  Future<String?> renameEntry(String path, String newName) async {
+    final dest = await AndroidBridge.renamePath(path, newName);
     if (dest == null) return null;
-    final next = item.copyWith(title: newName, path: dest);
-    final i = videos.indexWhere((v) => v.id == item.id);
-    if (i >= 0) videos[i] = next;
-    return next;
+    _movePrefix(path, dest);
+    _rebuildFolders();
+    unawaited(AndroidBridge.scanPaths([path, dest]));
+    return dest;
+  }
+
+  Future<VideoItem?> rename(VideoItem item, String newName) async {
+    final dest = await renameEntry(item.path, newName);
+    if (dest == null) return null;
+    return videos.firstWhere((v) => v.path == dest, orElse: () => item.copyWith(title: p.basename(dest), path: dest));
+  }
+
+  void _movePrefix(String from, String to) {
+    String? re(String k) {
+      if (k == from) return to;
+      if (k.startsWith('$from/')) return to + k.substring(from.length);
+      return null;
+    }
+
+    for (var i = 0; i < videos.length; i++) {
+      final np = re(videos[i].path);
+      if (np != null) videos[i] = videos[i].copyWith(path: np, title: p.basename(np), folder: p.dirname(np));
+    }
+    for (final m in [settings.resumeMap, settings.speedMap]) {
+      for (final k in m.keys.toList()) {
+        final np = re(k);
+        if (np != null) m[np] = m.remove(k)!;
+      }
+    }
+    for (final set in [settings.bookmarks, settings.pinned]) {
+      for (final k in set.toList()) {
+        final np = re(k);
+        if (np != null) {
+          set.remove(k);
+          set.add(np);
+        }
+      }
+    }
+    unawaited(settings.save());
   }
 
   /// Drops an entry whose file no longer exists (stale MediaStore row) and asks Android to rescan it.
