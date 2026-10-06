@@ -37,6 +37,58 @@ System navigation bar:
 - Bottom sheets now end above the navigation bar instead of scrolling under it, so the last action (for example Properties) is never covered by the bar buttons
 - About and Open source licenses pages keep clear of the side / bottom bar and cutouts
 
+Fixed:
+- Seek bar thumb no longer flips between old and new positions during scrub
+- Thumb no longer snaps back after release
+- Preview no longer pushes seek bar and time labels around
+- Portrait video preview no longer shows pixelated landscape crop
+- Preview frames no longer blink when swapping
+- Android nav bar no longer draws opaque gray strip
+- Mini player no longer clips off left edge and overlaps grid
+- Long press action sheet no longer cuts off in landscape
+- Mini card no longer shows VIDEO LOG debug text
+- Bottom sheet no longer scrolls too far
+- Library tabs no longer scroll when there is nothing inside them
+
+Added:
+- Floating preview overlay centered on thumb
+- Preview frames at real aspect ratio and screen density
+- JPEG quality 85
+- Last good preview frame fallback
+- More tab in bottom bar and side rail
+- Settings entry in More tab
+- Equalizer, Crash report and About entries
+- SettingsActivity in manifest
+- Large screen sidebar at 840 dp and up
+- 16:10 thumbnails
+- Up to 8 columns on wide screens
+- Wide header row for count filters and grid sort buttons
+- Launchable activity in each page instead of one main activity
+
+Improved:
+- Preview box matches frame shape with no cropping
+- Engine ignores stale mpv positions until playback settles within 1.2 seconds
+- Slider release and swipe seek use same immediate seek target
+- Tablet grid uses real content width instead of whole screen width
+- Landscape tablet grid shows 4 columns instead of 3
+- Visible rows increase from about half a row to about 1.5 rows
+- Mini player parked state clipped to content area
+- Expand chevron stays at content edge
+- System Nav bar only transparent on library and player when not fullscreen
+- Fullscreen video still hides bars
+- Settings screen reloads changes after returning
+- Phones in portrait keep same two column cards
+- Page improvements
+- Better equalizer layout
+
+Changed:
+- Settings tab replaced by More tab in bottom bar and side rail
+- Nav bar contrast enforcement turned off in Dart and native
+- Contrast enforcement off for popups too
+- Seek now jumps to nearest keyframe
+- Grid columns based on available content width
+- Wide content header shares one row
+
 ## 1.0.2.3
 
 Performance:
