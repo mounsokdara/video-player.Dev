@@ -81,6 +81,50 @@ class SystemBars {
   }
 }
 
+/// Keeps a page clear of the system navigation bar and display cutouts and makes those areas solid.
+///
+/// The app draws edge to edge, so the (transparent) navigation bar sits on top of the page. In
+/// landscape it is on the left or right, where an explicit list padding does not add an inset, and
+/// content scrolls underneath it. This widget:
+///  - pads [child] by the left / right system insets (and removes them from the [MediaQuery] it
+///    gives [child], so nested zones never pad twice), and
+///  - paints solid [color] (default: the theme surface) over the left, right and bottom bar areas,
+///    so content never shows through the bar. The bottom strip is skipped while the keyboard is up.
+///
+/// The bottom inset is deliberately not padded here: pages already add it to their list padding.
+class SystemBarSafeZone extends StatelessWidget {
+  const SystemBarSafeZone({super.key, required this.child, this.color});
+  final Widget child;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final pad = MediaQuery.viewPaddingOf(context);
+    final fill = color ?? Theme.of(context).colorScheme.surface;
+    final keyboard = MediaQueryData.fromView(View.of(context)).viewInsets.bottom > 0;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: pad.left, right: pad.right),
+          child: MediaQuery.removeViewPadding(
+            context: context,
+            removeLeft: true,
+            removeRight: true,
+            child: child,
+          ),
+        ),
+        if (pad.left > 0)
+          Positioned(left: 0, top: 0, bottom: 0, width: pad.left, child: IgnorePointer(child: ColoredBox(color: fill))),
+        if (pad.right > 0)
+          Positioned(right: 0, top: 0, bottom: 0, width: pad.right, child: IgnorePointer(child: ColoredBox(color: fill))),
+        if (pad.bottom > 0 && !keyboard)
+          Positioned(left: 0, right: 0, bottom: 0, height: pad.bottom, child: IgnorePointer(child: ColoredBox(color: fill))),
+      ],
+    );
+  }
+}
+
 class SystemBarObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {

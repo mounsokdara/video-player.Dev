@@ -114,10 +114,11 @@ class _SettingsHostState extends State<SettingsHost> {
       scheme.onSecondaryContainer,
       scheme.onSurface,
     ];
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       backgroundColor: scheme.surface,
       body: Padding(
-        padding: EdgeInsets.only(left: pad.left, right: pad.right),
+        // Side insets are handled by the SystemBarSafeZone around this Scaffold.
+        padding: EdgeInsets.zero,
         child: Row(
           children: [
             // Sidebar tabs: only built on large screens. Phones never see it.
@@ -186,7 +187,7 @@ class _SettingsHostState extends State<SettingsHost> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -222,7 +223,7 @@ class SettingsHub extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final pad = MediaQuery.viewPaddingOf(context);
-    return CustomScrollView(
+    return SystemBarSafeZone(child: CustomScrollView(
       slivers: [
         SliverAppBar(
           pinned: true,
@@ -237,7 +238,7 @@ class SettingsHub extends StatelessWidget {
           ]),
         ),
       ],
-    );
+    ));
   }
 
   Widget _categoryTile(BuildContext context, ColorScheme scheme, int i) {
@@ -394,7 +395,7 @@ class _GeneralSettingsState extends State<GeneralSettings> {
       widget.onChanged();
     }
 
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(leading: settingsBackLeading(context), title: const Text('General')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
@@ -469,7 +470,7 @@ class _GeneralSettingsState extends State<GeneralSettings> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -492,7 +493,7 @@ class _VideoSettingsState extends State<VideoSettings> {
       widget.onChanged();
     }
 
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Video')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
@@ -618,7 +619,7 @@ class _VideoSettingsState extends State<VideoSettings> {
           SwitchListTile(title: const Text('Remember HDR mode'), value: s.rememberHdr, onChanged: (v) => set(() => s.rememberHdr = v)),
         ],
       ),
-    );
+    ));
   }
 
   Widget _h(String t) => Padding(
@@ -646,7 +647,7 @@ class _AccessSettingsState extends State<AccessSettings> {
       widget.onChanged();
     }
 
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Accessibility')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
@@ -676,7 +677,7 @@ class _AccessSettingsState extends State<AccessSettings> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _h(String t) => Padding(
@@ -703,7 +704,7 @@ class _ThemeSettingsState extends State<ThemeSettings> {
       widget.onChanged();
     }
 
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Theme')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + pad.bottom),
@@ -817,7 +818,7 @@ class _ThemeSettingsState extends State<ThemeSettings> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -873,7 +874,7 @@ class _EqualizerPageState extends State<EqualizerPage> {
     final s = appSettings;
     final pad = MediaQuery.viewPaddingOf(context);
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(
         leading: standaloneBack(context),
         title: const Text('Equalizer'),
@@ -995,7 +996,7 @@ class _EqualizerPageState extends State<EqualizerPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
