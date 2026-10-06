@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/developer_options.dart';
+import 'package:video_player_app/about/github_profile.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/settings/settings.dart';
@@ -123,11 +124,9 @@ class _Hero extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(20)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(20)),
-          child: Icon(Icons.play_circle_fill, size: 36, color: cs.onPrimaryContainer),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.asset('assets/logo.png', width: 64, height: 64, filterQuality: FilterQuality.medium),
         ),
         const SizedBox(height: 16),
         Text(AboutInfo.name, style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
@@ -144,8 +143,36 @@ class _Hero extends StatelessWidget {
   }
 }
 
-class _CreatorCard extends StatelessWidget {
+class _CreatorCard extends StatefulWidget {
   const _CreatorCard();
+
+  @override
+  State<_CreatorCard> createState() => _CreatorCardState();
+}
+
+class _CreatorCardState extends State<_CreatorCard> {
+  late final Future<GithubProfile?> _profile = GithubProfile.load(AboutInfo.githubLogin);
+
+  Widget _avatar(ColorScheme cs, String? url, String letter) {
+    Widget fallback() => Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+          child: Text(letter, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: cs.onPrimary)),
+        );
+    if (url == null) return fallback();
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+        loadingBuilder: (_, child, p) => p == null ? child : fallback(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,24 +180,39 @@ class _CreatorCard extends StatelessWidget {
     return AboutSection(
       icon: Icons.person_outline,
       title: 'Created by',
-      subtitle: 'Design and development',
-      child: Row(children: [
-        Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
-          child: Text(AboutInfo.author[0],
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cs.onPrimary)),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(child: Text(AboutInfo.author, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-        FilledButton.tonalIcon(
-          onPressed: () => openExternal(AboutInfo.profileUrl),
-          icon: const Icon(Icons.open_in_new, size: 18),
-          label: const Text('GitHub'),
-        ),
-      ]),
+      subtitle: 'Live from GitHub',
+      child: FutureBuilder<GithubProfile?>(
+        future: _profile,
+        builder: (context, snap) {
+          final p = snap.data;
+          final name = p?.name ?? AboutInfo.author;
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _avatar(cs, p?.avatarUrl, name[0].toUpperCase()),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text('@${p?.login ?? AboutInfo.githubLogin}',
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                ]),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () => openExternal(AboutInfo.profileUrl),
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: const Text('GitHub'),
+              ),
+            ]),
+            if (p?.bio != null) ...[
+              const SizedBox(height: 14),
+              Text(p!.bio!, style: TextStyle(fontSize: 14, height: 1.4, color: cs.onSurfaceVariant)),
+            ] else if (snap.connectionState != ConnectionState.done) ...[
+              const SizedBox(height: 14),
+              const LinearProgressIndicator(),
+            ],
+          ]);
+        },
+      ),
     );
   }
 }

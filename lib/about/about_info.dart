@@ -9,7 +9,8 @@ class AboutInfo {
   static const displayVersion = '1.0.2.3';
   static const tagline = 'Local-only Material 3 player. Your videos never leave the device.';
 
-  static const profileUrl = 'https://github.com/mounsokdara';
+  static const githubLogin = 'mounsokdara';
+  static const profileUrl = 'https://github.com/$githubLogin';
   static const repoUrl = 'https://github.com/mounsokdara/video-player';
   static const releasesUrl = '$repoUrl/releases';
   static const issuesUrl = '$repoUrl/issues';
