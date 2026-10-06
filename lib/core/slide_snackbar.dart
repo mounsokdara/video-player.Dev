@@ -353,7 +353,12 @@ class _SlideSnackBarState extends State<_SlideSnackBar>
       ),
     );
 
-    final double safeBottom = (SystemBars.bottomInset(context) - widget.insets.bottom)
+    // Space below the area this snackbar is laid out in that the system bars (and the bottom
+    // navigation bar) already cover. Shown inside the page, that area ends above the navigation bar,
+    // so the snackbar must not add the system bar height on top of it.
+    final bool inHost = context.findAncestorStateOfType<_SlideSnackBarHostState>() != null;
+    final double coveredBelow = inHost ? _hostInsets(context).bottom : widget.insets.bottom;
+    final double safeBottom = (SystemBars.bottomInset(context) - coveredBelow)
         .clamp(0.0, double.infinity)
         .toDouble();
 
