@@ -4,4 +4,38 @@
     <style name="Theme.VideoPlayer.Page" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
+    <style name="ThemeOverlay.VideoPlayer.AppScheme" parent="">
+        <item name="colorPrimary">@color/vp_scheme_primary</item>
+        <item name="colorOnPrimary">@color/vp_scheme_on_primary</item>
+        <item name="colorPrimaryContainer">@color/vp_scheme_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/vp_scheme_on_primary_container</item>
+        <item name="colorSecondary">@color/vp_scheme_secondary</item>
+        <item name="colorOnSecondary">@color/vp_scheme_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/vp_scheme_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/vp_scheme_on_secondary_container</item>
+        <item name="colorTertiary">@color/vp_scheme_tertiary</item>
+        <item name="colorOnTertiary">@color/vp_scheme_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/vp_scheme_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/vp_scheme_on_tertiary_container</item>
+        <item name="colorError">@color/vp_scheme_error</item>
+        <item name="colorOnError">@color/vp_scheme_on_error</item>
+        <item name="colorErrorContainer">@color/vp_scheme_error_container</item>
+        <item name="colorOnErrorContainer">@color/vp_scheme_on_error_container</item>
+        <item name="colorSurface">@color/vp_scheme_surface</item>
+        <item name="colorOnSurface">@color/vp_scheme_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/vp_scheme_on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/vp_scheme_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/vp_scheme_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/vp_scheme_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/vp_scheme_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/vp_scheme_surface_container_highest</item>
+        <item name="colorOutline">@color/vp_scheme_outline</item>
+        <item name="colorOutlineVariant">@color/vp_scheme_outline_variant</item>
+        <item name="colorSurfaceInverse">@color/vp_scheme_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/vp_scheme_on_inverse_surface</item>
+        <item name="colorPrimaryInverse">@color/vp_scheme_inverse_primary</item>
+        <item name="colorSurfaceVariant">@color/vp_scheme_surface_container_highest</item>
+        <item name="android:colorBackground">@color/vp_scheme_surface</item>
+        <item name="colorOnBackground">@color/vp_scheme_on_surface</item>
+    </style>
 </resources>

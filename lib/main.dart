@@ -15,6 +15,7 @@ import 'package:video_player_app/core/models.dart';
 import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/settings/settings_ui.dart';
 import 'package:video_player_app/core/theme.dart';
+import 'package:video_player_app/core/theme_export.dart';
 
 export 'package:video_player_app/settings/settings.dart';
 
@@ -90,21 +91,16 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
     return DynamicColorBuilder(
       builder: (light, dark) {
         final mode = appSettings.themeMode;
+        final lightTheme = AppTheme.build(brightness: Brightness.light, settings: appSettings, dynamicScheme: light);
+        final darkTheme = AppTheme.build(brightness: Brightness.dark, settings: appSettings, dynamicScheme: dark);
+        ThemeExport.publish(lightTheme.colorScheme, darkTheme.colorScheme);
         return MaterialApp(
           navigatorKey: appNavigator,
           navigatorObservers: [SystemBarObserver()],
           title: 'Video Player',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.build(
-            brightness: Brightness.light,
-            settings: appSettings,
-            dynamicScheme: light,
-          ),
-          darkTheme: AppTheme.build(
-            brightness: Brightness.dark,
-            settings: appSettings,
-            dynamicScheme: dark,
-          ),
+          theme: lightTheme,
+          darkTheme: darkTheme,
           themeMode: switch (mode) {
             ThemeModePref.system => ThemeMode.system,
             ThemeModePref.light => ThemeMode.light,
