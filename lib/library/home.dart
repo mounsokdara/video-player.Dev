@@ -31,6 +31,9 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   final _snackHost = GlobalKey();
   int tab = 0;
+
+  /// Direction of the last tab change: 1 = to a tab on the right, -1 = to the left (drives the slide).
+  int _tabDir = 1;
   bool loading = true;
   String? error;
   bool selecting = false;
@@ -675,7 +678,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       };
     }
 
-    final body = pageFor(current);
+    // Switching tabs slides + fades: the new tab comes in from the side it sits on, the old one leaves
+    // the other way (shared-axis style).
+    final body = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (cur, prev) => Stack(fit: StackFit.expand, children: [...prev, if (cur != null) cur]),
+      transitionBuilder: (child, anim) {
+        final incoming = child.key == ValueKey('tab-$current');
+        final from = Offset((incoming ? _tabDir : -_tabDir) * 0.3, 0);
+        return FadeTransition(
+          opacity: anim,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: from, end: Offset.zero).animate(anim),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(key: ValueKey('tab-$current'), child: pageFor(current)),
+    );
     final pad = SystemBars.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final onTop = ModalRoute.of(context)?.isCurrent ?? true;
@@ -741,6 +763,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               NavigationRail(
                 selectedIndex: safeTab,
                 onDestinationSelected: (i) => setState(() {
+                  _tabDir = i >= safeTab ? 1 : -1;
                   tab = i;
                   selecting = false;
                   selected.clear();
@@ -774,6 +797,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           : NavigationBar(
               selectedIndex: safeTab,
               onDestinationSelected: (i) => setState(() {
+                _tabDir = i >= safeTab ? 1 : -1;
                 tab = i;
                 selecting = false;
                 selected.clear();
