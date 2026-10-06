@@ -33,18 +33,6 @@ class AndroidBridge {
     }
   }
 
-  static int? _windowBg;
-
-  /// Paints the native window behind Flutter with [argb] so rotation and
-  /// activity transitions never flash black/white.
-  static Future<void> setWindowBackground(int argb) async {
-    if (_windowBg == argb) return;
-    _windowBg = argb;
-    try {
-      await _ch.invokeMethod<bool>('setWindowBackground', {'color': argb});
-    } catch (_) {}
-  }
-
   static Future<int> sdkInt() async {
     try {
       return await _ch.invokeMethod<int>('sdkInt') ?? 0;

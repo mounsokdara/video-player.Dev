@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_bg">#121212</color>
-    <color name="launch_bg">#FAF9FD</color>
+    <color name="launch_bg">#FFFFFF</color>
     <color name="crash_bg">#121212</color>
     <color name="crash_title">#FFFFFF</color>
     <color name="crash_body">#DDDDDD</color>

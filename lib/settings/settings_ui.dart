@@ -62,48 +62,82 @@ class _SettingsHostState extends State<SettingsHost> {
     final scheme = Theme.of(context).colorScheme;
     final pad = MediaQuery.viewPaddingOf(context);
     final cat = _settingsCategories[_selected];
+    // Round icon colors per category, like the account-style sidebar.
+    final iconBg = <Color>[
+      scheme.primaryContainer,
+      scheme.tertiaryContainer,
+      scheme.secondaryContainer,
+      scheme.surfaceContainerHighest,
+    ];
+    final iconFg = <Color>[
+      scheme.onPrimaryContainer,
+      scheme.onTertiaryContainer,
+      scheme.onSecondaryContainer,
+      scheme.onSurface,
+    ];
     return Scaffold(
+      backgroundColor: scheme.surface,
       body: Padding(
         padding: EdgeInsets.only(left: pad.left, right: pad.right),
         child: Row(
           children: [
+            // Sidebar tabs: only built on large screens. Phones never see it.
             SizedBox(
-              width: 300,
-              child: Material(
-                color: scheme.surfaceContainerLow,
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(12, pad.top + 8, 12, pad.bottom + 16),
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          tooltip: 'Back',
-                          onPressed: _close,
-                        ),
-                        const SizedBox(width: 4),
-                        Text('Settings', style: Theme.of(context).textTheme.titleLarge),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    for (var i = 0; i < _settingsCategories.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: ListTile(
-                          selected: i == _selected,
-                          selectedTileColor: scheme.secondaryContainer,
-                          selectedColor: scheme.onSecondaryContainer,
-                          shape: const StadiumBorder(),
-                          leading: Icon(_settingsCategories[i].icon),
-                          title: Text(_settingsCategories[i].title),
+              width: 320,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(12, pad.top + 8, 12, pad.bottom + 16),
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Close',
+                        onPressed: _close,
+                      ),
+                      const SizedBox(width: 4),
+                      Text('Settings', style: Theme.of(context).textTheme.titleLarge),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  for (var i = 0; i < _settingsCategories.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Material(
+                        color: i == _selected ? scheme.primaryContainer : Colors.transparent,
+                        shape: const StadiumBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
                           onTap: () => setState(() => _selected = i),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: i == _selected ? scheme.surface : iconBg[i % iconBg.length],
+                                  foregroundColor: i == _selected ? scheme.primary : iconFg[i % iconFg.length],
+                                  child: Icon(_settingsCategories[i].icon),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    _settingsCategories[i].title,
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          color: i == _selected ? scheme.onPrimaryContainer : scheme.onSurface,
+                                          fontWeight: i == _selected ? FontWeight.w600 : FontWeight.w400,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
-            const VerticalDivider(width: 1),
+            VerticalDivider(width: 1, color: scheme.outlineVariant),
             Expanded(
               child: KeyedSubtree(
                 key: ValueKey(_selected),
