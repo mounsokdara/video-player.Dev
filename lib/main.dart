@@ -94,7 +94,7 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
       case '/about':
         return const AboutPage();
       case '/licenses':
-        return const LicensesPage();
+        return const SystemBarSafeZone(child: LicensesPage());
       case '/console':
         return const ConsolePage();
       default:

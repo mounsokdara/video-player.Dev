@@ -293,6 +293,7 @@ Future<T?> showAppSheet<T>({
   bool fitContent = true,
 }) {
   final pad = SystemBars.rawOf(context);
+  final bottomBar = SystemBars.bottomInset(context);
   // Landscape phones are short: open the sheet (nearly) full height so the
   // actions are not cut off, and keep it a readable width on wide screens.
   final short = MediaQuery.sizeOf(context).height < 520;
@@ -312,7 +313,7 @@ Future<T?> showAppSheet<T>({
           start: startSize,
           max: cap,
           fit: fitContent,
-          bottomPad: pad.bottom,
+          bottomPad: bottomBar,
           children: () => children(ctx),
         ),
       ),
@@ -354,7 +355,7 @@ class _FitSheetState extends State<_FitSheet> {
       if (!mounted) return;
       final h = _contentKey.currentContext?.size?.height;
       if (h == null) return;
-      final frac = ((h + _chrome + widget.bottomPad) / available).clamp(_minFloor, widget.max).toDouble();
+      final frac = ((h + _chrome) / available).clamp(_minFloor, widget.max).toDouble();
       if (_fitted == null || (frac - _fitted!).abs() > 0.003) setState(() => _fitted = frac);
     });
   }
@@ -362,7 +363,7 @@ class _FitSheetState extends State<_FitSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return LayoutBuilder(
+    final sheet = LayoutBuilder(
       builder: (context, box) {
         _measure(box.maxHeight);
         final cap = _fitted ?? widget.max;
@@ -381,7 +382,7 @@ class _FitSheetState extends State<_FitSheet> {
               clipBehavior: Clip.antiAlias,
               child: ListView(
                 controller: sc,
-                padding: EdgeInsets.only(bottom: widget.bottomPad + 12),
+                padding: const EdgeInsets.only(bottom: 12),
                 children: [
                   const SizedBox(height: 8),
                   Center(
@@ -408,9 +409,18 @@ class _FitSheetState extends State<_FitSheet> {
         );
       },
     );
+    // The sheet ends above the navigation bar (its last row can never sit under the bar's buttons);
+    // the bar area itself is painted with the sheet colour so it still looks like one surface.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(padding: EdgeInsets.only(bottom: widget.bottomPad), child: sheet),
+        if (widget.bottomPad > 0)
+          Positioned(left: 0, right: 0, bottom: 0, height: widget.bottomPad, child: ColoredBox(color: scheme.surface)),
+      ],
+    );
   }
 }
-
 
 Future<void> showItemsMenu(
   BuildContext context, {

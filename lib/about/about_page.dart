@@ -6,6 +6,7 @@ import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/developer_options.dart';
 import 'package:video_player_app/about/github_profile.dart';
 import 'package:video_player_app/about/licenses_page.dart';
+import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/settings/settings.dart';
 
@@ -49,8 +50,8 @@ class _AboutPageState extends State<AboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.viewPaddingOf(context).bottom;
-    return Scaffold(
+    final bottom = SystemBars.bottomInset(context);
+    return SystemBarSafeZone(child: Scaffold(
       body: CustomScrollView(slivers: [
         SliverAppBar(pinned: true, leading: standaloneBack(context), title: const Text('About')),
         SliverToBoxAdapter(
@@ -95,7 +96,7 @@ class _AboutPageState extends State<AboutPage> {
                       icon: Icons.description_outlined,
                       title: 'Open source licenses',
                       subtitle: 'Libraries used by this app',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LicensesPage())),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SystemBarSafeZone(child: LicensesPage()))),
                     ),
                   ]),
                   if (appSettings.developerEnabled) ...[
@@ -108,7 +109,7 @@ class _AboutPageState extends State<AboutPage> {
           ),
         ),
       ]),
-    );
+    ));
   }
 }
 

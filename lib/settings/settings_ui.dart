@@ -869,11 +869,162 @@ class _EqualizerPageState extends State<EqualizerPage> {
     return (appSettings.eqBands[i] / 100).clamp(minDb, maxDb).toDouble();
   }
 
+  /// Width from which the equalizer switches to the two-pane large-screen layout.
+  static const double _wideWidth = 720;
+
+  String _hzLabel(int i) {
+    final hz = AppSettings.eqBandHz[i];
+    return hz >= 1000 ? '${(hz / 1000).toStringAsFixed(hz % 1000 == 0 ? 0 : 1)}k' : '$hz';
+  }
+
+  String _dbLabel(double db) {
+    final n = db.round();
+    return n > 0 ? '+$n' : '$n';
+  }
+
+  Widget _presetChips({required bool wrap}) {
+    final s = appSettings;
+    final chips = <Widget>[
+      for (final name in AppSettings.eqPresets.keys)
+        ChoiceChip(
+          label: Text(name),
+          selected: s.eqPreset == name,
+          onSelected: (_) async {
+            s.applyPreset(name);
+            s.eqEnabled = true;
+            await _persist();
+          },
+        ),
+    ];
+    if (wrap) return Wrap(spacing: 8, runSpacing: 8, children: chips);
+    return ChipScroller(children: chips);
+  }
+
+  /// The ten band sliders. [height] is the slider track height; with [scale] a dB ruler is drawn on
+  /// the left (large screens).
+  Widget _bands(double height, {required bool scale}) {
+    final s = appSettings;
+    final cs = Theme.of(context).colorScheme;
+    final small = TextStyle(fontSize: 10, color: cs.onSurfaceVariant);
+    final ruler = SizedBox(
+      width: 30,
+      child: Column(
+        children: [
+          Text(' ', style: small),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('+${maxDb.round()}', style: small),
+                Text('0', style: small),
+                Text('${minDb.round()}', style: small),
+              ],
+            ),
+          ),
+          Text(' ', style: small),
+        ],
+      ),
+    );
+    return SizedBox(
+      height: height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (scale) ruler,
+          for (var i = 0; i < 10; i++)
+            Expanded(
+              child: Column(
+                children: [
+                  Text(_dbLabel(_bandDb(i)), style: small),
+                  Expanded(
+                    child: RotatedBox(
+                      quarterTurns: -1,
+                      child: Slider(
+                        min: minDb,
+                        max: maxDb,
+                        value: _bandDb(i),
+                        onChanged: s.eqEnabled
+                            ? (v) {
+                                setState(() {
+                                  s.eqBands[i] = (v * 100).round();
+                                  s.eqPreset = 'Custom';
+                                });
+                              }
+                            : null,
+                        onChangeEnd: (_) => _persist(),
+                      ),
+                    ),
+                  ),
+                  Text(_hzLabel(i), style: const TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _effects() {
+    final s = appSettings;
+    return [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Bass boost'),
+        value: s.bassBoostOn,
+        onChanged: (v) async {
+          s.bassBoostOn = v;
+          if (v) s.eqEnabled = true;
+          await _persist();
+        },
+      ),
+      Slider(
+        min: 0,
+        max: 1000,
+        value: s.bassBoost.toDouble(),
+        label: '${(s.bassBoost / 10).round()}%',
+        onChanged: s.bassBoostOn ? (v) => setState(() => s.bassBoost = v.round()) : null,
+        onChangeEnd: (_) => _persist(),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Surround sound'),
+        value: s.surroundOn,
+        onChanged: (v) async {
+          s.surroundOn = v;
+          if (v) s.eqEnabled = true;
+          await _persist();
+        },
+      ),
+      Slider(
+        min: 0,
+        max: 1000,
+        value: s.surround.toDouble(),
+        label: '${(s.surround / 10).round()}%',
+        onChanged: s.surroundOn ? (v) => setState(() => s.surround = v.round()) : null,
+        onChangeEnd: (_) => _persist(),
+      ),
+    ];
+  }
+
+  Widget _card(Widget child) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(20)),
+      child: child,
+    );
+  }
+
+  Widget _heading(String text) =>
+      Text(text, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600));
+
   @override
   Widget build(BuildContext context) {
     final s = appSettings;
     final pad = MediaQuery.viewPaddingOf(context);
-    final scheme = Theme.of(context).colorScheme;
+    final bottom = pad.bottom + MediaQuery.viewInsetsOf(context).bottom;
     return SystemBarSafeZone(child: Scaffold(
       appBar: AppBar(
         leading: standaloneBack(context),
@@ -889,112 +1040,81 @@ class _EqualizerPageState extends State<EqualizerPage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + pad.bottom + MediaQuery.viewInsetsOf(context).bottom),
-        children: [
-          Text('Presets', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          ChipScroller(
-            children: [
-              for (final name in AppSettings.eqPresets.keys)
-                ChoiceChip(
-                  label: Text(name),
-                  selected: s.eqPreset == name,
-                  onSelected: (_) async {
-                    s.applyPreset(name);
-                    s.eqEnabled = true;
-                    await _persist();
-                  },
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= _wideWidth;
+          if (!wide) {
+            // Phones: one column, capped width so a tall tablet in portrait does not stretch it.
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + bottom),
+                  children: [
+                    _heading('Presets'),
+                    const SizedBox(height: 8),
+                    _presetChips(wrap: false),
+                    const SizedBox(height: 20),
+                    _bands(220, scale: false),
+                    const SizedBox(height: 12),
+                    ..._effects(),
+                  ],
                 ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 220,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < 10; i++)
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: RotatedBox(
-                            quarterTurns: -1,
-                            child: Slider(
-                              min: minDb,
-                              max: maxDb,
-                              value: _bandDb(i),
-                              onChanged: s.eqEnabled
-                                  ? (v) async {
-                                      setState(() {
-                                        s.eqBands[i] = (v * 100).round();
-                                        s.eqPreset = 'Custom';
-                                      });
-                                    }
-                                  : null,
-                              onChangeEnd: (_) => _persist(),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          AppSettings.eqBandHz[i] >= 1000
-                              ? '${(AppSettings.eqBandHz[i] / 1000).toStringAsFixed(AppSettings.eqBandHz[i] % 1000 == 0 ? 0 : 1)}k'
-                              : '${AppSettings.eqBandHz[i]}',
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ],
+              ),
+            );
+          }
+          // Large screens: bands on the left (as tall as the screen allows), presets and effects
+          // in a side column, everything centred with a maximum width.
+          final bandHeight = (box.maxHeight - 130 - bottom).clamp(260.0, 480.0).toDouble();
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(24, 8, 24, 32 + bottom),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _card(Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _heading('Bands (dB)'),
+                          const SizedBox(height: 12),
+                          _bands(bandHeight, scale: true),
+                        ],
+                      )),
                     ),
-                  ),
-              ],
+                    const SizedBox(width: 20),
+                    SizedBox(
+                      width: 340,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _card(Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _heading('Presets'),
+                              const SizedBox(height: 10),
+                              _presetChips(wrap: true),
+                            ],
+                          )),
+                          const SizedBox(height: 16),
+                          _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            _heading('Effects'),
+                            ..._effects(),
+                          ])),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Bass boost'),
-            value: s.bassBoostOn,
-            onChanged: (v) async {
-              s.bassBoostOn = v;
-              if (v) s.eqEnabled = true;
-              await _persist();
-            },
-          ),
-          Slider(
-            min: 0,
-            max: 1000,
-            value: s.bassBoost.toDouble(),
-            label: '${(s.bassBoost / 10).round()}%',
-            onChanged: s.bassBoostOn
-                ? (v) async {
-                    setState(() => s.bassBoost = v.round());
-                  }
-                : null,
-            onChangeEnd: (_) => _persist(),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Surround sound'),
-            value: s.surroundOn,
-            onChanged: (v) async {
-              s.surroundOn = v;
-              if (v) s.eqEnabled = true;
-              await _persist();
-            },
-          ),
-          Slider(
-            min: 0,
-            max: 1000,
-            value: s.surround.toDouble(),
-            label: '${(s.surround / 10).round()}%',
-            onChanged: s.surroundOn
-                ? (v) async {
-                    setState(() => s.surround = v.round());
-                  }
-                : null,
-            onChangeEnd: (_) => _persist(),
-          ),
-        ],
+          );
+        },
       ),
     ));
   }

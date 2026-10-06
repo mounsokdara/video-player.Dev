@@ -16,6 +16,14 @@ class SystemBars {
     return MediaQueryData.fromView(View.of(context)).viewPadding;
   }
 
+  /// Bottom system bar height, taking the larger of the raw view padding and the (possibly
+  /// consumed) MediaQuery value, so a sheet or page never ends up under the navigation bar.
+  static double bottomInset(BuildContext context) {
+    final raw = rawOf(context).bottom;
+    final mq = MediaQuery.viewPaddingOf(context).bottom;
+    return raw > mq ? raw : mq;
+  }
+
   static SystemUiOverlayStyle overlay({required Brightness icons, bool contrast = false}) {
     final status = icons;
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
