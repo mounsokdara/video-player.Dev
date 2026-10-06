@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as pth;
 import 'package:share_plus/share_plus.dart';
 
 import 'package:video_player_app/core/slide_snackbar.dart';
@@ -472,7 +473,7 @@ Future<void> showItemsMenu(
             await Future<void>.delayed(const Duration(milliseconds: 160));
             if (!context.mounted) return;
             final item = items.first;
-            final name = await promptRename(context, item.title);
+            final name = await promptRename(context, item.path);
             if (name != null) {
               final next = await library.rename(item, name);
               if (next == null && context.mounted) showAllFilesFailed(context, 'Rename');
@@ -730,7 +731,9 @@ Future<String?> promptText(BuildContext context, String title, String initial, {
 }
 
 /// Asks for a new name until it is acceptable (see [renameError]); null when cancelled or unchanged.
-Future<String?> promptRename(BuildContext context, String current, {bool isDir = false}) async {
+Future<String?> promptRename(BuildContext context, String path, {bool isDir = false}) async {
+  final current = pth.basename(path);
+  final dir = pth.dirname(path);
   var initial = current;
   String? error;
   while (true) {
@@ -739,6 +742,9 @@ Future<String?> promptRename(BuildContext context, String current, {bool isDir =
     final name = input.trim();
     if (name == current) return null;
     error = renameError(name, current, isDir: isDir);
+    if (error == null && (File(pth.join(dir, name)).existsSync() || Directory(pth.join(dir, name)).existsSync())) {
+      error = 'A file or folder with this name already exists';
+    }
     if (error == null) return name;
     initial = name;
     if (!context.mounted) return null;
@@ -793,7 +799,7 @@ Future<void> showFolderEntryMenu(
           Navigator.pop(ctx);
           await Future<void>.delayed(const Duration(milliseconds: 160));
           if (!context.mounted) return;
-          final next = await promptRename(context, name, isDir: isDir);
+          final next = await promptRename(context, path, isDir: isDir);
           if (next != null) {
             final dest = await AndroidBridge.renamePath(path, next);
             if (dest == null && context.mounted) showAllFilesFailed(context, 'Rename');

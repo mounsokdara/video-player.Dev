@@ -140,6 +140,13 @@ class AndroidBridge {
     }
   }
 
+  /// Asks the media scanner to re-read [paths] (adds new files, drops rows of files that are gone).
+  static Future<void> scanPaths(List<String> paths) async {
+    try {
+      await _ch.invokeMethod<void>('scanPaths', {'paths': paths});
+    } catch (_) {}
+  }
+
   static Future<bool> copyPath(String src, String dest) async {
     try {
       return await _ch.invokeMethod<bool>('copyPath', {'src': src, 'dest': dest}) ?? false;

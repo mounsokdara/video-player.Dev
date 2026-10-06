@@ -220,7 +220,25 @@ open class MainActivity : FlutterActivity() {
                                 ?: return@setMethodCallHandler result.error("ARG", "name", null)
                             val src = File(path)
                             val dest = File(src.parentFile, name)
-                            result.success(if (src.renameTo(dest)) dest.absolutePath else null)
+                            // renameTo would silently replace an existing file with that name.
+                            if (dest.exists() || !src.renameTo(dest)) {
+                                result.success(null)
+                            } else {
+                                // Keep the media database in step: add the new name, drop the old row.
+                                try {
+                                    MediaScannerConnection.scanFile(this, arrayOf(src.absolutePath, dest.absolutePath), null, null)
+                                } catch (_: Exception) {
+                                }
+                                result.success(dest.absolutePath)
+                            }
+                        }
+                        "scanPaths" -> {
+                            val paths = call.argument<List<String>>("paths") ?: emptyList()
+                            try {
+                                MediaScannerConnection.scanFile(this, paths.toTypedArray(), null, null)
+                            } catch (_: Exception) {
+                            }
+                            result.success(true)
                         }
                         "setKeepScreenOn" -> {
                             keepScreenOn = call.argument<Boolean>("on") ?: false

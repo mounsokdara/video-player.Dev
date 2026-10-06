@@ -190,6 +190,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     _lastOpenPath = item.path;
     _lastOpenAt = now;
+    if (!File(item.path).existsSync()) {
+      // The media database still lists a file that is gone (moved, renamed or deleted elsewhere).
+      library.forgetMissing(item.path);
+      if (mounted) {
+        setState(() {});
+        SlideSnackBar.show(context, message: 'File not found. It was moved, renamed or deleted', behavior: SnackBarBehavior.floating);
+      }
+      return;
+    }
     final gen = ++_openGen;
     await CrashLog.breadcrumb('Play ${item.path}');
     if (!mounted) return;
