@@ -5,8 +5,8 @@ import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/developer_options.dart';
 import 'package:video_player_app/about/github_profile.dart';
+import 'package:video_player_app/about/licenses_page.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
-import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/settings/settings.dart';
 
 /// About page, laid out like the Dara Hub site: hero card, section cards and
@@ -95,7 +95,7 @@ class _AboutPageState extends State<AboutPage> {
                       icon: Icons.description_outlined,
                       title: 'Open source licenses',
                       subtitle: 'Libraries used by this app',
-                      onTap: () => AndroidBridge.openPage('licenses'),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LicensesPage())),
                     ),
                   ]),
                   if (appSettings.developerEnabled) ...[
@@ -135,8 +135,6 @@ class _Hero extends StatelessWidget {
         const SizedBox(height: 14),
         const Wrap(spacing: 8, runSpacing: 8, children: [
           AboutChip('v${AboutInfo.displayVersion}', icon: Icons.sell_outlined),
-          AboutChip('Material 3', icon: Icons.palette_outlined),
-          AboutChip('libmpv', icon: Icons.movie_outlined),
         ]),
       ]),
     );

@@ -10,12 +10,5 @@
     <string name="crash_close">Close</string>
     <string name="crash_copied">Copied. Paste it in chat.</string>
     <string name="crash_clip_label">crash</string>
-    <string name="console_title">Console</string>
-    <string name="console_copy">Copy</string>
-    <string name="console_clear">Clear</string>
-    <string name="console_copied">Copied</string>
-    <string name="console_empty_debug">No debug lines yet. Turn on Log debug and use the player.</string>
-    <string name="licenses_title">Open source licenses</string>
-    <string name="licenses_unavailable">License text is not available in this build.</string>
     <string name="navigate_back">Back</string>
 </resources>

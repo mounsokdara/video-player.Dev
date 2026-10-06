@@ -372,11 +372,22 @@ class AndroidBridge {
     } catch (_) {}
   }
 
-  /// Opens a native XML page: 'licenses' or 'console'. (About is a Dart page.)
-  static Future<void> openPage(String page) async {
+  /// Persisted debug log text (native app storage), used by the Console page.
+  static Future<String> readDebugLog() async {
     try {
-      await _ch.invokeMethod('openPage', {'page': page});
-    } catch (_) {}
+      return await _ch.invokeMethod<String>('readDebugLog') ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// Crash breadcrumbs text for the Console page.
+  static Future<String> peekCrash() async {
+    try {
+      return await _ch.invokeMethod<String>('peekCrash') ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   static Future<void> debugLog(String line) async {

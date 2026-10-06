@@ -122,12 +122,19 @@ class LibraryService {
         await AndroidBridge.requestAllFilesAccess();
         allFiles = await AndroidBridge.hasAllFilesAccess();
       }
+      if (!allFiles) {
+        // All files access not granted: fall back to the regular storage / media read permission
+        // (READ_MEDIA_VIDEO on Android 13+, READ/WRITE_EXTERNAL_STORAGE on Android 11-12).
+        final fallback = sdk >= 33 ? Permission.videos : Permission.storage;
+        final status = await fallback.request();
+        permissionReady = status.isGranted || status.isLimited;
+      }
     } else {
       // Android 10 and older have no All files permission; use legacy storage.
       await Permission.storage.request();
       allFiles = await AndroidBridge.hasAllFilesAccess();
     }
-    permissionReady = allFiles;
+    permissionReady = allFiles || permissionReady;
     manageMedia = await AndroidBridge.canManageMedia();
   }
 
