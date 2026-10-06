@@ -950,10 +950,12 @@ class VideosHub extends StatelessWidget {
       displacement: 40,
       edgeOffset: pad.top + kToolbarHeight,
       onRefresh: onRefresh,
-      child: NestedScrollView(
+      // One scroll view for header + videos: when everything fits there is nothing to scroll
+      // (a NestedScrollView let the header row scroll away even for a short list).
+      child: LayoutBuilder(
+        builder: (context, box) => CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-      headerSliverBuilder: (context, inner) {
-        return [
+      slivers: [
           SliverAppBar(
             pinned: true,
             title: selecting
@@ -1046,76 +1048,86 @@ class VideosHub extends StatelessWidget {
               ),
             ),
           ),
-        ];
-      },
-      body: loading
-          ? ListView(
-              key: const ValueKey('videos-loading'),
-              physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-              children: const [SizedBox(height: 220, child: Center(child: CircularProgressIndicator()))],
-            )
-          : library.videos.isEmpty
-              ? CustomScrollView(
-                  key: const ValueKey('empty-library-scroll'),
-                  physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-                  slivers: [
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyLibrary(key: const ValueKey('empty-library'), onRefresh: onRefresh),
-                    ),
-                  ],
-                )
-              : items.isEmpty
-                  ? CustomScrollView(
-                      key: const ValueKey('no-matches-scroll'),
-                      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-                      slivers: [
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Center(
-                            child: Text('No video found', style: TextStyle(color: scheme.onSurfaceVariant)),
-                          ),
-                        ),
-                      ],
-                    )
-                  : layout == LayoutMode.list
-                      ? ListView.builder(
-                          key: const ValueKey('video-list'),
-                          physics: const ClampingScrollPhysics(),
-                          padding: EdgeInsets.only(bottom: 24 + pad.bottom),
-                          itemCount: items.length,
-                          itemBuilder: (_, i) {
-                            final item = items[i];
-                            return VideoListTile(
-                              item: item,
-                              selected: selected.contains(item.id),
-                              selecting: selecting,
-                              onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
-                              onLongPress: () => onHold(item),
-                            );
-                          },
-                        )
-                      : LayoutBuilder(
-                          key: const ValueKey('video-grid'),
-                          builder: (context, box) => GridView.builder(
-                            physics: const ClampingScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + pad.bottom),
-                            gridDelegate: _gridDelegate(box.maxWidth),
-                            itemCount: items.length,
-                            itemBuilder: (_, i) {
-                              final item = items[i];
-                              return VideoGridCard(
-                                item: item,
-                                selected: selected.contains(item.id),
-                                selecting: selecting,
-                                onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
-                                onLongPress: () => onHold(item),
-                              );
-                            },
-                          ),
-                        ),
-    ),
+          ..._bodySlivers(context, box.maxWidth),
+        ],
+        ),
+      ),
     );
+  }
+
+  /// The videos area as slivers (loading, empty, no match, list or grid), placed after the header.
+  List<Widget> _bodySlivers(BuildContext context, double width) {
+    final scheme = Theme.of(context).colorScheme;
+    final pad = MediaQuery.viewPaddingOf(context);
+    if (loading) {
+      return const [
+        SliverToBoxAdapter(
+          key: ValueKey('videos-loading'),
+          child: SizedBox(height: 220, child: Center(child: CircularProgressIndicator())),
+        ),
+      ];
+    }
+    if (library.videos.isEmpty) {
+      return [
+        SliverFillRemaining(
+          key: const ValueKey('empty-library-scroll'),
+          hasScrollBody: false,
+          child: _EmptyLibrary(key: const ValueKey('empty-library'), onRefresh: onRefresh),
+        ),
+      ];
+    }
+    if (items.isEmpty) {
+      return [
+        SliverFillRemaining(
+          key: const ValueKey('no-matches-scroll'),
+          hasScrollBody: false,
+          child: Center(
+            child: Text('No video found', style: TextStyle(color: scheme.onSurfaceVariant)),
+          ),
+        ),
+      ];
+    }
+    if (layout == LayoutMode.list) {
+      return [
+        SliverPadding(
+          key: const ValueKey('video-list'),
+          padding: EdgeInsets.only(bottom: 24 + pad.bottom),
+          sliver: SliverList.builder(
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final item = items[i];
+              return VideoListTile(
+                item: item,
+                selected: selected.contains(item.id),
+                selecting: selecting,
+                onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
+                onLongPress: () => onHold(item),
+              );
+            },
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverPadding(
+        key: const ValueKey('video-grid'),
+        padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + pad.bottom),
+        sliver: SliverGrid.builder(
+          gridDelegate: _gridDelegate(width),
+          itemCount: items.length,
+          itemBuilder: (_, i) {
+            final item = items[i];
+            return VideoGridCard(
+              item: item,
+              selected: selected.contains(item.id),
+              selecting: selecting,
+              onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
+              onLongPress: () => onHold(item),
+            );
+          },
+        ),
+      ),
+    ];
   }
 }
 
