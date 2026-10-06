@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show LicenseRegistry;
 import 'package:flutter/material.dart';
 
 import 'package:video_player_app/about/about_info.dart';
