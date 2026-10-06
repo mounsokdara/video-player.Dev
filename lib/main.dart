@@ -4,6 +4,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/library/home.dart';
@@ -18,6 +19,16 @@ import 'package:video_player_app/core/theme.dart';
 export 'package:video_player_app/settings/settings.dart';
 
 final library = LibraryService(appSettings);
+
+int? _lastWindowBg;
+
+/// Remembers the app surface color so native activities (Settings) can paint
+/// their window with it before Flutter draws, instead of flashing black.
+void _rememberWindowBg(int argb) {
+  if (_lastWindowBg == argb) return;
+  _lastWindowBg = argb;
+  SharedPreferences.getInstance().then((p) => p.setInt('windowBgArgb', argb)).catchError((_) => false);
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -100,6 +111,7 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
             ThemeModePref.dark => ThemeMode.dark,
           },
           builder: (context, child) {
+            _rememberWindowBg(Theme.of(context).colorScheme.surface.toARGB32());
             final scale = appSettings.uiScale.clamp(0.85, 1.35).toDouble();
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(

@@ -47,7 +47,11 @@ class SettingsHost extends StatefulWidget {
 }
 
 class _SettingsHostState extends State<SettingsHost> {
-  int _selected = 0;
+  /// Category the user explicitly opened (tapped on a phone, or tapped in the
+  /// sidebar). Kept in memory while the screen is resized or rotated:
+  ///  - small screen: null shows the main list, otherwise that category's page;
+  ///  - large screen: sidebar selects this one, or the first when still null.
+  int? _picked;
 
   void _close() => SystemNavigator.pop();
 
@@ -55,13 +59,33 @@ class _SettingsHostState extends State<SettingsHost> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= kSettingsSidebarWidth;
     if (!wide) {
-      return Scaffold(
-        body: SettingsHub(onChanged: widget.onChanged, onBack: _close),
+      final i = _picked;
+      return PopScope(
+        canPop: i == null,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _picked = null);
+        },
+        child: Scaffold(
+          body: i == null
+              ? SettingsHub(
+                  onChanged: widget.onChanged,
+                  onBack: _close,
+                  onOpen: (n) => setState(() => _picked = n),
+                )
+              : _SettingsBack(
+                  onBack: () => setState(() => _picked = null),
+                  child: KeyedSubtree(
+                    key: ValueKey('page$i'),
+                    child: _settingsCategories[i].build(widget.onChanged),
+                  ),
+                ),
+        ),
       );
     }
+    final selected = _picked ?? 0;
     final scheme = Theme.of(context).colorScheme;
     final pad = MediaQuery.viewPaddingOf(context);
-    final cat = _settingsCategories[_selected];
+    final cat = _settingsCategories[selected];
     // Round icon colors per category, like the account-style sidebar.
     final iconBg = <Color>[
       scheme.primaryContainer,
@@ -103,19 +127,19 @@ class _SettingsHostState extends State<SettingsHost> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 3),
                       child: Material(
-                        color: i == _selected ? scheme.primaryContainer : Colors.transparent,
+                        color: i == selected ? scheme.primaryContainer : Colors.transparent,
                         shape: const StadiumBorder(),
                         clipBehavior: Clip.antiAlias,
                         child: InkWell(
-                          onTap: () => setState(() => _selected = i),
+                          onTap: () => setState(() => _picked = i),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
                             child: Row(
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundColor: i == _selected ? scheme.surface : iconBg[i % iconBg.length],
-                                  foregroundColor: i == _selected ? scheme.primary : iconFg[i % iconFg.length],
+                                  backgroundColor: i == selected ? scheme.surface : iconBg[i % iconBg.length],
+                                  foregroundColor: i == selected ? scheme.primary : iconFg[i % iconFg.length],
                                   child: Icon(_settingsCategories[i].icon),
                                 ),
                                 const SizedBox(width: 16),
@@ -123,8 +147,8 @@ class _SettingsHostState extends State<SettingsHost> {
                                   child: Text(
                                     _settingsCategories[i].title,
                                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: i == _selected ? scheme.onPrimaryContainer : scheme.onSurface,
-                                          fontWeight: i == _selected ? FontWeight.w600 : FontWeight.w400,
+                                          color: i == selected ? scheme.onPrimaryContainer : scheme.onSurface,
+                                          fontWeight: i == selected ? FontWeight.w600 : FontWeight.w400,
                                         ),
                                   ),
                                 ),
@@ -140,7 +164,7 @@ class _SettingsHostState extends State<SettingsHost> {
             VerticalDivider(width: 1, color: scheme.outlineVariant),
             Expanded(
               child: KeyedSubtree(
-                key: ValueKey(_selected),
+                key: ValueKey('pane$selected'),
                 child: cat.build(widget.onChanged),
               ),
             ),
@@ -151,11 +175,33 @@ class _SettingsHostState extends State<SettingsHost> {
   }
 }
 
+/// Lets a category page (shown full screen on a phone) draw a back arrow that
+/// returns to the main settings list. Absent in the large-screen detail pane.
+class _SettingsBack extends InheritedWidget {
+  const _SettingsBack({required this.onBack, required super.child});
+  final VoidCallback onBack;
+
+  static VoidCallback? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SettingsBack>()?.onBack;
+
+  @override
+  bool updateShouldNotify(_SettingsBack oldWidget) => true;
+}
+
+Widget? settingsBackLeading(BuildContext context) {
+  final back = _SettingsBack.of(context);
+  return back == null ? null : BackButton(onPressed: back);
+}
+
 /// Category list shown on phones inside the Settings activity.
 class SettingsHub extends StatelessWidget {
-  const SettingsHub({super.key, required this.onChanged, this.onBack});
+  const SettingsHub({super.key, required this.onChanged, this.onBack, this.onOpen});
   final VoidCallback onChanged;
   final VoidCallback? onBack;
+
+  /// When set, a tapped category is reported here (state lives in the host)
+  /// instead of being pushed as its own route.
+  final ValueChanged<int>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -171,24 +217,33 @@ class SettingsHub extends StatelessWidget {
         SliverPadding(
           padding: EdgeInsets.only(bottom: pad.bottom + 24),
           sliver: SliverList.list(children: [
-            for (final c in _settingsCategories)
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  foregroundColor: scheme.onSurface,
-                  child: Icon(c.icon),
-                ),
-                title: Text(c.title),
-                subtitle: Text(c.sub),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => c.build(onChanged)));
-                  onChanged();
-                },
-              ),
+            for (var i = 0; i < _settingsCategories.length; i++)
+              _categoryTile(context, scheme, i),
           ]),
         ),
       ],
+    );
+  }
+
+  Widget _categoryTile(BuildContext context, ColorScheme scheme, int i) {
+    final c = _settingsCategories[i];
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.surfaceContainerHighest,
+        foregroundColor: scheme.onSurface,
+        child: Icon(c.icon),
+      ),
+      title: Text(c.title),
+      subtitle: Text(c.sub),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () async {
+        if (onOpen != null) {
+          onOpen!(i);
+          return;
+        }
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => c.build(onChanged)));
+        onChanged();
+      },
     );
   }
 }
@@ -326,7 +381,7 @@ class _GeneralSettingsState extends State<GeneralSettings> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('General')),
+      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('General')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
         children: [
@@ -424,7 +479,7 @@ class _VideoSettingsState extends State<VideoSettings> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Video')),
+      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Video')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
         children: [
@@ -578,7 +633,7 @@ class _AccessSettingsState extends State<AccessSettings> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Accessibility')),
+      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Accessibility')),
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
         children: [
@@ -635,7 +690,7 @@ class _ThemeSettingsState extends State<ThemeSettings> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Theme')),
+      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Theme')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + pad.bottom),
         children: [
