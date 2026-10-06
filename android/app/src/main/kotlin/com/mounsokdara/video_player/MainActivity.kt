@@ -81,6 +81,10 @@ open class MainActivity : FlutterActivity() {
         ) { isPlaying = it }
         appNative = AppNative(this, systemBars, audioFocus, equalizer)
         super.onCreate(savedInstanceState)
+        // Rotate with a cross-fade; the default animation shows a black backdrop.
+        window.attributes = window.attributes.apply {
+            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE
+        }
         systemBars.enableEdgeToEdge()
         NativeCrashLog.installHook(this) { emit(it) }
         handleIncoming(intent)

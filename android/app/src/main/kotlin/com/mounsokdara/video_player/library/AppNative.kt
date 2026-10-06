@@ -54,6 +54,12 @@ class AppNative(
                 result.success(true)
                 return true
             }
+            NativeConstants.Method.SET_WINDOW_BG -> {
+                val argb = call.argument<Number>("color")?.toInt()
+                if (argb != null) activity.window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(argb))
+                result.success(true)
+                return true
+            }
             NativeConstants.Method.OPEN_SETTINGS -> {
                 activity.startActivity(Intent(activity, SettingsActivity::class.java))
                 result.success(true)

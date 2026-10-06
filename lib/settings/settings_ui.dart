@@ -182,7 +182,7 @@ class MoreHub extends StatelessWidget {
               ),
               title: const Text('Settings'),
               subtitle: const Text('General, video, accessibility, theme'),
-              trailing: const Icon(Icons.open_in_new),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () async {
                 final ok = await AndroidBridge.openSettings();
                 if (!ok && context.mounted) {

@@ -11,6 +11,7 @@ import 'package:video_player_app/library/picker.dart';
 import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/library/library.dart';
 import 'package:video_player_app/core/models.dart';
+import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/settings/settings_ui.dart';
 import 'package:video_player_app/core/theme.dart';
@@ -100,6 +101,7 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
             ThemeModePref.dark => ThemeMode.dark,
           },
           builder: (context, child) {
+            AndroidBridge.setWindowBackground(Theme.of(context).colorScheme.surface.toARGB32());
             final scale = appSettings.uiScale.clamp(0.85, 1.35).toDouble();
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
