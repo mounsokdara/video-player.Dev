@@ -116,8 +116,7 @@ class SystemBarController(private val activity: Activity) {
             )
     }
 
-    @Suppress("DEPRECATION")
-    @Suppress("UNUSED_PARAMETER")
+    @Suppress("DEPRECATION", "UNUSED_PARAMETER")
     private fun showBars(window: Window, lightIcons: Boolean, contrast: Boolean) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.TRANSPARENT
