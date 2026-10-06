@@ -550,6 +550,28 @@ class LibraryService {
   }
 }
 
+/// Why [name] cannot be the new name of [original], or null when it is fine. Files must keep a
+/// video extension (their own, or any known video format), so a rename can never turn a video into
+/// something the library no longer recognises.
+String? renameError(String name, String original, {bool isDir = false}) {
+  if (name.isEmpty) return 'The name cannot be empty';
+  if (name.contains('/') || name.contains(r'\') || name.contains('\u0000')) {
+    return r'The name cannot contain / or \';
+  }
+  if (name == '.' || name == '..') return 'Invalid name';
+  if (isDir) return null;
+  final own = p.extension(original).toLowerCase();
+  final dot = name.lastIndexOf('.');
+  final ext = dot > 0 ? name.substring(dot).toLowerCase() : '';
+  if (ext.isEmpty || (ext != own && !videoExtensions.contains(ext))) {
+    final hint = own.isNotEmpty ? own : '.mp4';
+    return ext.isEmpty
+        ? 'Keep a video file extension, for example $hint'
+        : '"$ext" is not a video format. Use $hint or another video extension';
+  }
+  return null;
+}
+
 const videoExtensions = {
   '.mp4',
   '.mkv',

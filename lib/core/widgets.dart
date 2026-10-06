@@ -472,9 +472,9 @@ Future<void> showItemsMenu(
             await Future<void>.delayed(const Duration(milliseconds: 160));
             if (!context.mounted) return;
             final item = items.first;
-            final name = await promptText(context, 'Rename', item.title);
-            if (name != null && name.trim().isNotEmpty) {
-              final next = await library.rename(item, name.trim());
+            final name = await promptRename(context, item.title);
+            if (name != null) {
+              final next = await library.rename(item, name);
               if (next == null && context.mounted) showAllFilesFailed(context, 'Rename');
               onChanged();
             }
@@ -684,7 +684,7 @@ Future<bool> confirm(BuildContext context, String title, String body) async {
   return v ?? false;
 }
 
-Future<String?> promptText(BuildContext context, String title, String initial) async {
+Future<String?> promptText(BuildContext context, String title, String initial, {String? error}) async {
   final c = TextEditingController(text: initial);
   try {
     return await showModalBottomSheet<String>(
@@ -707,7 +707,7 @@ Future<String?> promptText(BuildContext context, String title, String initial) a
                 controller: c,
                 autofocus: true,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration: InputDecoration(border: const OutlineInputBorder(), errorText: error, errorMaxLines: 3),
                 onSubmitted: (v) => Navigator.pop(ctx, v),
               ),
               const SizedBox(height: 12),
@@ -726,6 +726,22 @@ Future<String?> promptText(BuildContext context, String title, String initial) a
     );
   } finally {
     c.dispose();
+  }
+}
+
+/// Asks for a new name until it is acceptable (see [renameError]); null when cancelled or unchanged.
+Future<String?> promptRename(BuildContext context, String current, {bool isDir = false}) async {
+  var initial = current;
+  String? error;
+  while (true) {
+    final input = await promptText(context, 'Rename', initial, error: error);
+    if (input == null) return null;
+    final name = input.trim();
+    if (name == current) return null;
+    error = renameError(name, current, isDir: isDir);
+    if (error == null) return name;
+    initial = name;
+    if (!context.mounted) return null;
   }
 }
 
@@ -777,9 +793,9 @@ Future<void> showFolderEntryMenu(
           Navigator.pop(ctx);
           await Future<void>.delayed(const Duration(milliseconds: 160));
           if (!context.mounted) return;
-          final next = await promptText(context, 'Rename', name);
-          if (next != null && next.trim().isNotEmpty) {
-            final dest = await AndroidBridge.renamePath(path, next.trim());
+          final next = await promptRename(context, name, isDir: isDir);
+          if (next != null) {
+            final dest = await AndroidBridge.renamePath(path, next);
             if (dest == null && context.mounted) showAllFilesFailed(context, 'Rename');
             onChanged();
           }
