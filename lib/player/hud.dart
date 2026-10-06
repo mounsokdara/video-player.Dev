@@ -1,12 +1,8 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import 'package:video_player_app/about/about_widgets.dart' show EmbeddedPane;
 import 'package:video_player_app/settings/settings.dart';
-import 'package:video_player_app/settings/settings_ui.dart' show settingsBackLeading;
 
 class HudFab {
   HudFab({required this.id, required this.x, required this.y, this.size = 56});
@@ -107,37 +103,10 @@ class _HudEditorPageState extends State<HudEditorPage> {
   bool _dirty = false;
   int? _active;
 
-  bool _embedded = false;
-
   @override
   void initState() {
     super.initState();
     _fabs = decodeHud(appSettings.hudFabsJson);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _embedded = EmbeddedPane.of(context);
-  }
-
-  @override
-  void dispose() {
-    // In the Settings sidebar there is no back button to ask on: switching tab keeps the layout.
-    if (_embedded && _dirty) {
-      appSettings.hudFabsJson = encodeHud(_fabs);
-      unawaited(appSettings.save());
-    }
-    super.dispose();
-  }
-
-  /// Pops the page, or closes the activity when this is its only page.
-  void _close() {
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    } else {
-      SystemNavigator.pop();
-    }
   }
 
   Future<bool> _confirmLeave() async {
@@ -211,16 +180,11 @@ class _HudEditorPageState extends State<HudEditorPage> {
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (await _confirmLeave() && mounted) _close();
+        if (await _confirmLeave() && mounted) Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF101418),
         appBar: AppBar(
-          leading: settingsBackLeading(context) == null
-              ? null
-              : BackButton(onPressed: () async {
-                  if (await _confirmLeave() && mounted) _close();
-                }),
           title: const Text('Floating action buttons'),
           actions: [
             IconButton(tooltip: 'Add', onPressed: _add, icon: const Icon(Icons.add)),
@@ -390,7 +354,7 @@ class _TitleBarEditorState extends State<TitleBarEditor> {
   Widget build(BuildContext context) {
     final pad = MediaQuery.viewPaddingOf(context);
     return Scaffold(
-      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Title bar buttons')),
+      appBar: AppBar(title: const Text('Title bar buttons')),
       body: ReorderableListView.builder(
         padding: EdgeInsets.only(bottom: pad.bottom + 24),
         itemCount: order.length,

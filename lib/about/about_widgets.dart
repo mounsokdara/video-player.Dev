@@ -214,20 +214,7 @@ class AboutQuickActions extends StatelessWidget {
   }
 }
 
-/// Marks a page shown inside the large-screen Settings sidebar (right pane): there is no
-/// back arrow to draw, the sidebar already has its own close button.
-class EmbeddedPane extends InheritedWidget {
-  const EmbeddedPane({super.key, required super.child});
-
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<EmbeddedPane>() != null;
-
-  @override
-  bool updateShouldNotify(EmbeddedPane oldWidget) => false;
-}
-
 /// Back arrow for a page that runs as its own activity (nothing to pop): closes the activity.
-/// Returns null (default back arrow) when the page was pushed inside the app, and in the sidebar pane.
-Widget? standaloneBack(BuildContext context) => EmbeddedPane.of(context) || Navigator.canPop(context)
-    ? null
-    : BackButton(onPressed: SystemNavigator.pop);
+/// Returns null (default back arrow) when the page was pushed inside the app.
+Widget? standaloneBack(BuildContext context) =>
+    Navigator.canPop(context) ? null : BackButton(onPressed: SystemNavigator.pop);

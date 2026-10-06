@@ -7,8 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_page.dart';
-import 'package:video_player_app/about/licenses_page.dart';
-import 'package:video_player_app/settings/open_in_app.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/player/hud.dart';
 import 'package:video_player_app/core/insets.dart';
@@ -18,7 +16,7 @@ import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/playback/session.dart';
 import 'package:video_player_app/core/material_you.dart';
 import 'package:video_player_app/core/widgets.dart';
-import 'package:video_player_app/about/about_widgets.dart' show EmbeddedPane, standaloneBack;
+import 'package:video_player_app/about/about_widgets.dart' show standaloneBack;
 
 /// One entry in the settings sidebar / category list.
 class _SettingsCategory {
@@ -34,38 +32,13 @@ final _settingsCategories = <_SettingsCategory>[
   _SettingsCategory(Icons.videocam_outlined, 'Video', 'Display, playback, decoder, gestures', (c) => VideoSettings(onChanged: c)),
   _SettingsCategory(Icons.accessibility_new, 'Accessibility', 'Color filters, motion, text', (c) => AccessSettings(onChanged: c)),
   _SettingsCategory(Icons.palette_outlined, 'Theme', 'Dark / light / system and seed color', (c) => ThemeSettings(onChanged: c)),
-  _SettingsCategory(Icons.bolt_outlined, 'Quick actions', 'Buttons in the player quick bar', (c) => QuickActionsEditor(onChanged: c)),
-  _SettingsCategory(Icons.web_asset, 'Title bar buttons', 'Buttons in the player title bar', (c) => TitleBarEditor(onChanged: c)),
-  _SettingsCategory(Icons.touch_app_outlined, 'Floating action buttons', 'Place buttons on the video', (c) => HudEditorPage(onChanged: c)),
-  _SettingsCategory(Icons.description_outlined, 'Open source licenses', 'Libraries used by this app', (c) => const LicensesPage()),
-  _SettingsCategory(Icons.open_in_new, 'Open in app', 'Which links and files open here', (c) => const OpenInAppPage()),
 ];
 
 /// Route name -> index in [_settingsCategories], for the per-category activities.
-const _standaloneCategory = {
-  '/general': 0,
-  '/video': 1,
-  '/accessibility': 2,
-  '/theme': 3,
-  '/quick-actions': 4,
-  '/title-bar': 5,
-  '/floating-buttons': 6,
-  // 7 is '/licenses': it has its own standalone page (see main.dart).
-  '/open-in-app': 8,
-};
+const _standaloneCategory = {'/general': 0, '/video': 1, '/accessibility': 2, '/theme': 3};
 
 /// Activity route of each entry in [_settingsCategories].
-const _categoryRoutes = [
-  '/general',
-  '/video',
-  '/accessibility',
-  '/theme',
-  '/quick-actions',
-  '/title-bar',
-  '/floating-buttons',
-  '/licenses',
-  '/open-in-app',
-];
+const _categoryRoutes = ['/general', '/video', '/accessibility', '/theme'];
 
 /// Full-screen page for an activity that shows one settings category (or the equalizer) on its own,
 /// or null for any other route. Reuses the same widgets as the Settings activity; the back arrow
@@ -189,7 +162,7 @@ class _SettingsHostState extends State<SettingsHost> {
             Expanded(
               child: KeyedSubtree(
                 key: ValueKey('pane$selected'),
-                child: EmbeddedPane(child: cat.build(widget.onChanged)),
+                child: cat.build(widget.onChanged),
               ),
             ),
           ],
@@ -286,7 +259,7 @@ class MoreHub extends StatelessWidget {
                 child: const Icon(Icons.settings_outlined),
               ),
               title: const Text('Settings'),
-              subtitle: const Text('General, video, accessibility, theme, buttons, open in app'),
+              subtitle: const Text('General, video, accessibility, theme'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
                 await openPage(context, '/settings', () => Scaffold(body: SettingsHub(onChanged: onChanged)));
@@ -435,6 +408,21 @@ class _GeneralSettingsState extends State<GeneralSettings> {
             onTap: () => showTabVisibilityDialog(context, () {
               set(() {});
             }),
+          ),
+          ListTile(
+            title: const Text('Quick actions'),
+            trailing: const Icon(Icons.tune),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuickActionsEditor(onChanged: widget.onChanged))),
+          ),
+          ListTile(
+            title: const Text('Title bar buttons'),
+            trailing: const Icon(Icons.tune),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TitleBarEditor(onChanged: widget.onChanged))),
+          ),
+          ListTile(
+            title: const Text('Floating action buttons'),
+            trailing: const Icon(Icons.tune),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HudEditorPage(onChanged: widget.onChanged))),
           ),
           SwitchListTile(title: const Text('Remember playback progress'), value: s.rememberPlayback, onChanged: (v) => set(() => s.rememberPlayback = v)),
           ListTile(
@@ -1136,7 +1124,7 @@ class _QuickActionsEditorState extends State<QuickActionsEditor> {
   Widget build(BuildContext context) {
     final pad = MediaQuery.viewPaddingOf(context);
     return Scaffold(
-      appBar: AppBar(leading: settingsBackLeading(context), title: const Text('Quick actions')),
+      appBar: AppBar(title: const Text('Quick actions')),
       body: ReorderableListView.builder(
         padding: EdgeInsets.only(left: pad.left, right: pad.right, bottom: pad.bottom + 24),
         itemCount: order.length,

@@ -59,22 +59,10 @@ class AppNative(
                     "/equalizer" -> EqualizerActivity::class.java
                     "/licenses" -> LicensesActivity::class.java
                     "/console" -> ConsoleActivity::class.java
-                    "/quick-actions" -> QuickActionsActivity::class.java
-                    "/title-bar" -> TitleBarButtonsActivity::class.java
-                    "/floating-buttons" -> FloatingButtonsActivity::class.java
-                    "/open-in-app" -> OpenInAppActivity::class.java
                     else -> null
                 }
                 if (target != null) activity.startActivity(Intent(activity, target))
                 result.success(target != null)
-                return true
-            }
-            NativeConstants.Method.OPEN_IN_APP_INFO -> {
-                result.success(OpenInApp.entries(activity))
-                return true
-            }
-            NativeConstants.Method.OPEN_BY_DEFAULT_SETTINGS -> {
-                result.success(OpenInApp.openByDefaultSettings(activity))
                 return true
             }
             NativeConstants.Method.DEBUG_LOG -> {
