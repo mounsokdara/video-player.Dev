@@ -676,12 +676,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final onTop = ModalRoute.of(context)?.isCurrent ?? true;
     if (onTop) {
       SystemBars.alwaysHide = false;
-      SystemBars.apply(icons: dark ? Brightness.light : Brightness.dark, contrast: true, hide: false);
+      SystemBars.apply(icons: dark ? Brightness.light : Brightness.dark, contrast: false, hide: false);
     }
 
     Widget shell(Widget child) {
-      return Stack(
-        clipBehavior: Clip.none,
+      // Everything the mini player draws (including its parked, off-edge state)
+      // is clipped to the content area, so it can never spill over the
+      // navigation rail or past the screen edge.
+      return ClipRect(
+        child: Stack(
+        clipBehavior: Clip.hardEdge,
         children: [
           child,
           if (PlaybackSession.active && appSettings.inAppMiniplayer)
@@ -717,6 +721,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               ),
             ),
         ],
+        ),
       );
     }
 
@@ -878,12 +883,30 @@ class VideosHub extends StatelessWidget {
   final String filter;
   final void Function(String)? onFilter;
 
-  int _columns(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    if (w >= 1400) return 5;
-    if (w >= 1100) return 4;
-    if (w >= 700) return 3;
-    return 2;
+  /// Grid sized from the width the grid really gets (not the screen width, which
+  /// includes the navigation rail). Phones keep the original 2-column cards;
+  /// tablets and landscape get as many columns as fit, with shorter thumbnails
+  /// so more rows are visible.
+  SliverGridDelegate _gridDelegate(double width) {
+    const gap = 12.0;
+    if (width < 600) {
+      return const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: gap,
+        crossAxisSpacing: gap,
+        childAspectRatio: 0.82,
+      );
+    }
+    final avail = width - 24;
+    final cols = ((avail + gap) / (200 + gap)).floor().clamp(3, 8).toInt();
+    final cardW = (avail - gap * (cols - 1)) / cols;
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: cols,
+      mainAxisSpacing: gap,
+      crossAxisSpacing: gap,
+      // 16:10 thumbnail + the text footer (about 80 dp).
+      mainAxisExtent: cardW * 0.625 + 80,
+    );
   }
 
   @override
@@ -923,36 +946,33 @@ class VideosHub extends StatelessWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${items.length} videos  ·  ${formatBytes(library.totalBytes)}',
-                          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
-                        ),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final inline = box.maxWidth >= 600;
+                  final count = Text(
+                    '${items.length} videos  ·  ${formatBytes(library.totalBytes)}',
+                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                  );
+                  final actions = <Widget>[
+                    if (selecting)
+                      Checkbox(
+                        value: items.isNotEmpty && items.every((v) => selected.contains(v.id)),
+                        onChanged: items.isEmpty ? null : (_) => onToggleMaster(),
+                      )
+                    else ...[
+                      IconButton(
+                        tooltip: layout == LayoutMode.list ? 'Grid' : 'List',
+                        onPressed: () => onLayout(layout == LayoutMode.list ? LayoutMode.grid : LayoutMode.list),
+                        icon: Icon(layout == LayoutMode.list ? Icons.grid_view : Icons.view_list),
                       ),
-                      if (selecting)
-                        Checkbox(
-                          value: items.isNotEmpty && items.every((v) => selected.contains(v.id)),
-                          onChanged: items.isEmpty ? null : (_) => onToggleMaster(),
-                        )
-                      else ...[
-                        IconButton(
-                          tooltip: layout == LayoutMode.list ? 'Grid' : 'List',
-                          onPressed: () => onLayout(layout == LayoutMode.list ? LayoutMode.grid : LayoutMode.list),
-                          icon: Icon(layout == LayoutMode.list ? Icons.grid_view : Icons.view_list),
-                        ),
-                        IconButton(
-                          tooltip: 'Sort',
-                          onPressed: onSort,
-                          icon: const Icon(Icons.sort),
-                        ),
-                      ],
+                      IconButton(
+                        tooltip: 'Sort',
+                        onPressed: onSort,
+                        icon: const Icon(Icons.sort),
+                      ),
                     ],
-                  ),
-                  ChipScroller(
+                  ];
+                  final chips = ChipScroller(
                     children: [
                       ChoiceChip(
                         label: const Text('All'),
@@ -970,8 +990,26 @@ class VideosHub extends StatelessWidget {
                         onSelected: (_) => onFilter?.call('pinned'),
                       ),
                     ],
-                  ),
-                ],
+                  );
+                  // Wide content: count, filters and view buttons share one row,
+                  // leaving more of the screen for the videos.
+                  if (inline) {
+                    return Row(
+                      children: [
+                        count,
+                        const SizedBox(width: 20),
+                        Expanded(child: chips),
+                        ...actions,
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      Row(children: [Expanded(child: count), ...actions]),
+                      chips,
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -1024,27 +1062,24 @@ class VideosHub extends StatelessWidget {
                             );
                           },
                         )
-                      : GridView.builder(
+                      : LayoutBuilder(
                           key: const ValueKey('video-grid'),
-                          physics: const ClampingScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + pad.bottom),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: _columns(context),
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.82,
+                          builder: (context, box) => GridView.builder(
+                            physics: const ClampingScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + pad.bottom),
+                            gridDelegate: _gridDelegate(box.maxWidth),
+                            itemCount: items.length,
+                            itemBuilder: (_, i) {
+                              final item = items[i];
+                              return VideoGridCard(
+                                item: item,
+                                selected: selected.contains(item.id),
+                                selecting: selecting,
+                                onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
+                                onLongPress: () => onHold(item),
+                              );
+                            },
                           ),
-                          itemCount: items.length,
-                          itemBuilder: (_, i) {
-                            final item = items[i];
-                            return VideoGridCard(
-                              item: item,
-                              selected: selected.contains(item.id),
-                              selecting: selecting,
-                              onTap: () => selecting ? onToggleSelect(item) : onOpen(item),
-                              onLongPress: () => onHold(item),
-                            );
-                          },
                         ),
     ),
     );

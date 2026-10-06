@@ -577,7 +577,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
           looks: PictureLooks.current(),
           child: ColoredBox(
             color: Colors.black,
-            child: AppVideo(engine: c, fit: BoxFit.contain),
+            child: AppVideo(engine: c, fit: BoxFit.contain, showLog: false),
           ),
         );
       } else {

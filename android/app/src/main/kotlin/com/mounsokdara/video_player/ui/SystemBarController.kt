@@ -11,7 +11,7 @@ import android.view.WindowManager
 
 class SystemBarController(private val activity: Activity) {
     private var lastLightIcons = true
-    private var lastContrast = true
+    private var lastContrast = false
     private var lastHide = false
     private var hideGen = 0
     private var uiListenerAttached = false
@@ -30,7 +30,7 @@ class SystemBarController(private val activity: Activity) {
             window.statusBarColor = Color.TRANSPARENT
             window.navigationBarColor = Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= 29) {
-                window.isNavigationBarContrastEnforced = true
+                window.isNavigationBarContrastEnforced = false
                 window.isStatusBarContrastEnforced = false
             }
             attachUiListener(window)

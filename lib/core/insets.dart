@@ -16,7 +16,7 @@ class SystemBars {
     return MediaQueryData.fromView(View.of(context)).viewPadding;
   }
 
-  static SystemUiOverlayStyle overlay({required Brightness icons, bool contrast = true}) {
+  static SystemUiOverlayStyle overlay({required Brightness icons, bool contrast = false}) {
     final status = icons;
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
     return SystemUiOverlayStyle(
@@ -31,7 +31,7 @@ class SystemBars {
     );
   }
 
-  static void apply({required Brightness icons, bool contrast = true, bool forceShow = false, bool? hide}) {
+  static void apply({required Brightness icons, bool contrast = false, bool forceShow = false, bool? hide}) {
     iconBrightness = icons;
     final shouldHide = hide ?? (alwaysHide && popupCount <= 0 && !forceShow);
     _ensureUiCallback();
@@ -54,7 +54,7 @@ class SystemBars {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         unawaited(AndroidBridge.applySystemBars(
           lightIcons: iconBrightness == Brightness.light,
-          contrast: true,
+          contrast: false,
           hide: true,
         ));
       }

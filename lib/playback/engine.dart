@@ -604,9 +604,12 @@ class PlaybackEngine extends ChangeNotifier {
 }
 
 class AppVideo extends StatefulWidget {
-  const AppVideo({super.key, required this.engine, this.fit = BoxFit.fill});
+  const AppVideo({super.key, required this.engine, this.fit = BoxFit.fill, this.showLog = true});
   final PlaybackEngine engine;
   final BoxFit fit;
+
+  /// The developer log overlay is far too big for small surfaces such as the mini player.
+  final bool showLog;
 
   @override
   State<AppVideo> createState() => _AppVideoState();
@@ -725,7 +728,7 @@ class _AppVideoState extends State<AppVideo> {
       fit: widget.fit,
       controls: NoVideoControls,
     );
-    if (!appSettings.developerEnabled || !appSettings.videoLogOverlay) return video;
+    if (!widget.showLog || !appSettings.developerEnabled || !appSettings.videoLogOverlay) return video;
     return Stack(
       fit: StackFit.passthrough,
       children: [
