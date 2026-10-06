@@ -37,6 +37,9 @@ final _settingsCategories = <_SettingsCategory>[
 /// Route name -> index in [_settingsCategories], for the per-category activities.
 const _standaloneCategory = {'/general': 0, '/video': 1, '/accessibility': 2, '/theme': 3};
 
+/// Activity route of each entry in [_settingsCategories].
+const _categoryRoutes = ['/general', '/video', '/accessibility', '/theme'];
+
 /// Full-screen page for an activity that shows one settings category (or the equalizer) on its own,
 /// or null for any other route. Reuses the same widgets as the Settings activity; the back arrow
 /// closes the activity.
@@ -62,13 +65,8 @@ class SettingsHost extends StatefulWidget {
 }
 
 class _SettingsHostState extends State<SettingsHost> {
-  /// Category the user explicitly opened (tapped on a phone, or tapped in the
-  /// sidebar). Kept in memory while the screen is resized or rotated:
-  ///  - small screen: null shows the main list, otherwise that category's page;
-  ///  - large screen: sidebar selects this one, or the first when still null.
+  /// Category selected in the sidebar (large screens); the first one while still null.
   int? _picked;
-
-  final _navKey = GlobalKey<NavigatorState>();
 
   void _close() => SystemNavigator.pop();
 
@@ -76,45 +74,9 @@ class _SettingsHostState extends State<SettingsHost> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= kSettingsSidebarWidth;
     if (!wide) {
-      // Phones / sidebar hidden: the hub and the opened category are pages of a nested Navigator,
-      // so opening and closing a category uses the system slide (in from the right, out to the right).
-      // [_picked] stays the source of truth, so a resize or rotation keeps the open category.
-      final i = _picked;
-      return PopScope(
-        canPop: i == null,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _navKey.currentState?.maybePop();
-        },
-        child: Navigator(
-          key: _navKey,
-          pages: [
-            MaterialPage<void>(
-              key: const ValueKey('settings-hub'),
-              child: Scaffold(
-                body: SettingsHub(
-                  onChanged: widget.onChanged,
-                  onBack: _close,
-                  onOpen: (n) => setState(() => _picked = n),
-                ),
-              ),
-            ),
-            if (i != null)
-              MaterialPage<void>(
-                key: ValueKey('settings-cat$i'),
-                child: _SettingsBack(
-                  onBack: () => _navKey.currentState?.maybePop(),
-                  child: _settingsCategories[i].build(widget.onChanged),
-                ),
-              ),
-          ],
-          onDidRemovePage: (page) {
-            final key = page.key;
-            if (_picked != null && key is ValueKey<String> && key.value.startsWith('settings-cat')) {
-              setState(() => _picked = null);
-            }
-          },
-        ),
-      );
+      // Tabs sidebar hidden: the list of categories; each one opens as its own activity with the
+      // system slide transition (see SettingsHub).
+      return Scaffold(body: SettingsHub(onChanged: widget.onChanged, onBack: _close));
     }
     final selected = _picked ?? 0;
     final scheme = Theme.of(context).colorScheme;
@@ -230,13 +192,9 @@ Widget? settingsBackLeading(BuildContext context) {
 
 /// Category list shown on phones inside the Settings activity.
 class SettingsHub extends StatelessWidget {
-  const SettingsHub({super.key, required this.onChanged, this.onBack, this.onOpen});
+  const SettingsHub({super.key, required this.onChanged, this.onBack});
   final VoidCallback onChanged;
   final VoidCallback? onBack;
-
-  /// When set, a tapped category is reported here (state lives in the host)
-  /// instead of being pushed as its own route.
-  final ValueChanged<int>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -272,11 +230,7 @@ class SettingsHub extends StatelessWidget {
       subtitle: Text(c.sub),
       trailing: const Icon(Icons.chevron_right),
       onTap: () async {
-        if (onOpen != null) {
-          onOpen!(i);
-          return;
-        }
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => c.build(onChanged)));
+        await openPage(context, _categoryRoutes[i], () => c.build(onChanged));
         onChanged();
       },
     );
@@ -308,15 +262,8 @@ class MoreHub extends StatelessWidget {
               subtitle: const Text('General, video, accessibility, theme'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
-                final ok = await AndroidBridge.openSettings();
-                if (!ok && context.mounted) {
-                  // Native screen unavailable: fall back to the in-app list.
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => Scaffold(body: SettingsHub(onChanged: onChanged))),
-                  );
-                  onChanged();
-                }
+                await openPage(context, '/settings', () => Scaffold(body: SettingsHub(onChanged: onChanged)));
+                onChanged();
               },
             ),
             const Divider(),
@@ -324,7 +271,7 @@ class MoreHub extends StatelessWidget {
               leading: const Icon(Icons.equalizer),
               title: const Text('Equalizer'),
               subtitle: Text(appSettings.eqEnabled ? 'On · ${appSettings.eqPreset}' : 'Off'),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EqualizerPage())),
+              onTap: () => openPage(context, '/equalizer', () => const EqualizerPage()),
             ),
             ListTile(
               leading: const Icon(Icons.bug_report_outlined),
@@ -337,7 +284,7 @@ class MoreHub extends StatelessWidget {
               title: const Text('About'),
               subtitle: Text('Video Player ${AboutInfo.displayVersion}'),
               onTap: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutPage()));
+                await openPage(context, '/about', () => const AboutPage());
                 onChanged();
               },
             ),

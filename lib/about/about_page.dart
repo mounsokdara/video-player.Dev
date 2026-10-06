@@ -8,6 +8,7 @@ import 'package:video_player_app/about/github_profile.dart';
 import 'package:video_player_app/about/licenses_page.dart';
 import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
+import 'package:video_player_app/core/widgets.dart';
 import 'package:video_player_app/settings/settings.dart';
 
 /// About page, laid out like the Dara Hub site: hero card, section cards and
@@ -96,7 +97,7 @@ class _AboutPageState extends State<AboutPage> {
                       icon: Icons.description_outlined,
                       title: 'Open source licenses',
                       subtitle: 'Libraries used by this app',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SystemBarSafeZone(child: LicensesPage()))),
+                      onTap: () => openPage(context, '/licenses', () => const SystemBarSafeZone(child: LicensesPage())),
                     ),
                   ]),
                   if (appSettings.developerEnabled) ...[

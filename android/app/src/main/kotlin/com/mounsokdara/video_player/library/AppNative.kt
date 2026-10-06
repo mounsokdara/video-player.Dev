@@ -47,9 +47,22 @@ class AppNative(
                 result.success(true)
                 return true
             }
-            NativeConstants.Method.OPEN_SETTINGS -> {
-                activity.startActivity(Intent(activity, SettingsActivity::class.java))
-                result.success(true)
+            NativeConstants.Method.OPEN_ACTIVITY -> {
+                // Screens that run as their own activity: opened with the system slide transition.
+                val target = when (call.argument<String>("route")) {
+                    "/settings" -> SettingsActivity::class.java
+                    "/general" -> GeneralSettingsActivity::class.java
+                    "/video" -> VideoSettingsActivity::class.java
+                    "/accessibility" -> AccessibilitySettingsActivity::class.java
+                    "/theme" -> ThemeSettingsActivity::class.java
+                    "/about" -> AboutActivity::class.java
+                    "/equalizer" -> EqualizerActivity::class.java
+                    "/licenses" -> LicensesActivity::class.java
+                    "/console" -> ConsoleActivity::class.java
+                    else -> null
+                }
+                if (target != null) activity.startActivity(Intent(activity, target))
+                result.success(target != null)
                 return true
             }
             NativeConstants.Method.DEBUG_LOG -> {

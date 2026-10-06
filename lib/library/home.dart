@@ -542,7 +542,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       try {
         await CrashLog.breadcrumb('Open equalizer');
         if (!context.mounted) return;
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const EqualizerPage()));
+        await openPage(context, '/equalizer', () => const EqualizerPage());
       } catch (e, s) {
         CrashLog.record('EQ', '$e', s);
       }

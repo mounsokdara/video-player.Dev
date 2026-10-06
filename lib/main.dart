@@ -15,6 +15,7 @@ import 'package:video_player_app/library/picker.dart';
 import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/library/library.dart';
 import 'package:video_player_app/core/models.dart';
+import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/settings/settings_ui.dart';
 import 'package:video_player_app/core/theme.dart';
@@ -78,6 +79,15 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       SharedPreferences.getInstance().then((p) => p.reload()).then((_) => appSettings.load()).then((_) {
+        // The equalizer may have been changed in its own activity: apply it to this engine's audio.
+        AndroidBridge.applyEqualizer(
+          enabled: appSettings.eqEnabled,
+          bands: appSettings.eqBands,
+          bassOn: appSettings.bassBoostOn,
+          bass: appSettings.bassBoost,
+          surroundOn: appSettings.surroundOn,
+          surround: appSettings.surround,
+        );
         if (mounted) setState(() {});
       });
     }

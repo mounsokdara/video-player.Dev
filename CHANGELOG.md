@@ -7,7 +7,8 @@ Equalizer:
 - Each band shows its current dB value; phones keep the single column (capped width on tall tablets)
 
 Settings:
-- On phones (tabs sidebar hidden) opening a category such as Accessibility, and going back, uses the system slide transition; the open category still survives rotation / resize
+- Screens that have their own activity (Settings categories, About, Equalizer, Open source licenses, Console) always open as that activity with the system slide transition, like Settings from the More tab; if an activity is unavailable the in-app page is used. The player's own Equalizer button stays in-app (opening an activity there would trigger picture-in-picture)
+- The equalizer is re-applied when the app resumes, so changes made in its activity take effect
 
 Ripple:
 - Developer options switches, the GitHub button in the About page and the Equalizer card rows now show their ripple (the cards are Material surfaces instead of decorated containers that hid it)

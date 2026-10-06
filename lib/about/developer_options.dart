@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/console_page.dart';
 import 'package:video_player_app/core/developer_log.dart';
+import 'package:video_player_app/core/widgets.dart';
 import 'package:video_player_app/settings/settings.dart';
 
 class _DevOption {
@@ -65,7 +66,7 @@ class _DeveloperOptionsSectionState extends State<DeveloperOptionsSection> {
           icon: Icons.terminal,
           title: 'Console',
           subtitle: 'Debug log and crash breadcrumbs',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ConsolePage())),
+          onTap: () => openPage(context, '/console', () => const ConsolePage()),
         ),
       ]),
     ]);

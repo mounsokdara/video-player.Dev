@@ -819,3 +819,11 @@ Future<void> showFolderEntryMenu(
     ],
   );
 }
+
+/// Opens [route] as its own activity (system slide transition); if that activity is unavailable,
+/// pushes [fallback] inside the app instead.
+Future<void> openPage(BuildContext context, String route, Widget Function() fallback) async {
+  if (await AndroidBridge.openRoute(route)) return;
+  if (!context.mounted) return;
+  await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => fallback()));
+}
