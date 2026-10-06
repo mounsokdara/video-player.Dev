@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:video_player_app/about/about_widgets.dart' show standaloneBack;
 
 import 'package:video_player_app/settings/settings.dart';
 
@@ -109,6 +111,15 @@ class _HudEditorPageState extends State<HudEditorPage> {
     _fabs = decodeHud(appSettings.hudFabsJson);
   }
 
+  /// Pops the page, or closes the activity when it runs on its own (nothing to pop).
+  void _close() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      SystemNavigator.pop();
+    }
+  }
+
   Future<bool> _confirmLeave() async {
     if (!_dirty) return true;
     final r = await showDialog<String>(
@@ -180,11 +191,16 @@ class _HudEditorPageState extends State<HudEditorPage> {
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (await _confirmLeave() && mounted) Navigator.pop(context);
+        if (await _confirmLeave() && mounted) _close();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF101418),
         appBar: AppBar(
+          leading: Navigator.canPop(context)
+              ? null
+              : BackButton(onPressed: () async {
+                  if (await _confirmLeave() && mounted) _close();
+                }),
           title: const Text('Floating action buttons'),
           actions: [
             IconButton(tooltip: 'Add', onPressed: _add, icon: const Icon(Icons.add)),
@@ -354,7 +370,7 @@ class _TitleBarEditorState extends State<TitleBarEditor> {
   Widget build(BuildContext context) {
     final pad = MediaQuery.viewPaddingOf(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Title bar buttons')),
+      appBar: AppBar(leading: standaloneBack(context), title: const Text('Title bar buttons')),
       body: ReorderableListView.builder(
         padding: EdgeInsets.only(bottom: pad.bottom + 24),
         itemCount: order.length,

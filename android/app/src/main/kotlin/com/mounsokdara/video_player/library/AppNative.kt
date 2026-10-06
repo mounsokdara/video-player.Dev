@@ -59,6 +59,9 @@ class AppNative(
                     "/equalizer" -> EqualizerActivity::class.java
                     "/licenses" -> LicensesActivity::class.java
                     "/console" -> ConsoleActivity::class.java
+                    "/quick-actions" -> QuickActionsActivity::class.java
+                    "/title-bar" -> TitleBarButtonsActivity::class.java
+                    "/floating-buttons" -> FloatingButtonsActivity::class.java
                     else -> null
                 }
                 if (target != null) activity.startActivity(Intent(activity, target))

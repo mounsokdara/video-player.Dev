@@ -45,6 +45,14 @@ const _categoryRoutes = ['/general', '/video', '/accessibility', '/theme'];
 /// closes the activity.
 Widget? standaloneSettingsPage(String route, VoidCallback onChanged) {
   if (route == '/equalizer') return const EqualizerPage();
+  switch (route) {
+    case '/quick-actions':
+      return SystemBarSafeZone(child: QuickActionsEditor(onChanged: onChanged));
+    case '/title-bar':
+      return SystemBarSafeZone(child: TitleBarEditor(onChanged: onChanged));
+    case '/floating-buttons':
+      return HudEditorPage(onChanged: onChanged);
+  }
   final i = _standaloneCategory[route];
   if (i == null) return null;
   return _SettingsBack(onBack: SystemNavigator.pop, child: _settingsCategories[i].build(onChanged));
@@ -412,17 +420,17 @@ class _GeneralSettingsState extends State<GeneralSettings> {
           ListTile(
             title: const Text('Quick actions'),
             trailing: const Icon(Icons.tune),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuickActionsEditor(onChanged: widget.onChanged))),
+            onTap: () => openPage(context, '/quick-actions', () => QuickActionsEditor(onChanged: widget.onChanged)),
           ),
           ListTile(
             title: const Text('Title bar buttons'),
             trailing: const Icon(Icons.tune),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TitleBarEditor(onChanged: widget.onChanged))),
+            onTap: () => openPage(context, '/title-bar', () => TitleBarEditor(onChanged: widget.onChanged)),
           ),
           ListTile(
             title: const Text('Floating action buttons'),
             trailing: const Icon(Icons.tune),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HudEditorPage(onChanged: widget.onChanged))),
+            onTap: () => openPage(context, '/floating-buttons', () => HudEditorPage(onChanged: widget.onChanged)),
           ),
           SwitchListTile(title: const Text('Remember playback progress'), value: s.rememberPlayback, onChanged: (v) => set(() => s.rememberPlayback = v)),
           ListTile(
@@ -1124,7 +1132,7 @@ class _QuickActionsEditorState extends State<QuickActionsEditor> {
   Widget build(BuildContext context) {
     final pad = MediaQuery.viewPaddingOf(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Quick actions')),
+      appBar: AppBar(leading: standaloneBack(context), title: const Text('Quick actions')),
       body: ReorderableListView.builder(
         padding: EdgeInsets.only(left: pad.left, right: pad.right, bottom: pad.bottom + 24),
         itemCount: order.length,

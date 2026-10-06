@@ -10,6 +10,9 @@
     <string name="video_settings_title">Video settings</string>
     <string name="accessibility_settings_title">Accessibility settings</string>
     <string name="theme_settings_title">Theme settings</string>
+    <string name="quick_actions_title">Quick actions</string>
+    <string name="title_bar_buttons_title">Title bar buttons</string>
+    <string name="floating_buttons_title">Floating action buttons</string>
     <string name="playback_channel">Playback</string>
     <string name="playback_channel_desc">Now playing controls</string>
 </resources>
