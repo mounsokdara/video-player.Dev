@@ -215,6 +215,82 @@
         </activity>
 
         <activity
+            android:name=".QuickActionsActivity"
+            android:exported="true"
+            android:label="@string/quick_actions_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/quick-actions" />
+        </activity>
+
+        <activity
+            android:name=".TitleBarButtonsActivity"
+            android:exported="true"
+            android:label="@string/title_bar_buttons_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/title-bar" />
+        </activity>
+
+        <activity
+            android:name=".FloatingButtonsActivity"
+            android:exported="true"
+            android:label="@string/floating_buttons_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/floating-buttons" />
+        </activity>
+
+        <activity
+            android:name=".OpenInAppActivity"
+            android:exported="true"
+            android:label="@string/open_in_app_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/open-in-app" />
+        </activity>
+
+        <activity
             android:name=".LicensesActivity"
             android:exported="true"
             android:label="@string/licenses_title"

@@ -62,5 +62,7 @@ object NativeConstants {
         const val CLEAR_LOGS = "clearLogs"
         const val READ_DEBUG_LOG = "readDebugLog"
         const val PEEK_CRASH = "peekCrash"
+        const val OPEN_IN_APP_INFO = "openInAppInfo"
+        const val OPEN_BY_DEFAULT_SETTINGS = "openByDefaultSettings"
     }
 }

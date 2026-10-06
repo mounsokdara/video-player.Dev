@@ -2,6 +2,11 @@
 
 ## Unreleased (dev)
 
+Settings:
+- New sidebar tabs (and matching activities, with the system slide): Quick actions, Title bar buttons, Floating action buttons, Open source licenses and Open in app. The three button editors moved here from General
+- Open in app: an auto-generated page, built at runtime from what Android resolves for this app (videos from other apps, file paths, share, pick), showing whether the app is the default, with a shortcut to the system "Open by default" settings
+- The floating-button layout is kept when you switch tab in the sidebar; as its own activity the back arrow still asks about unsaved changes
+
 Navigation bar:
 - No hardcoded navigation bar color any more: the app no longer forces it transparent (themes, native window setup, Flutter overlay style) and no longer paints its own solid strip over it; the system default is used, with the system contrast scrim
 - Pages still keep their content clear of the bar; the snackbar no longer overlaps the navigation buttons
