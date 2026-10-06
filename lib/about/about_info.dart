@@ -4,7 +4,7 @@ class AboutInfo {
 
   static const name = 'Video Player';
   static const author = 'Moun Sokdara';
-  static const displayVersion = '1.0.2.3';
+  static const displayVersion = '1.0.2.1';
   static const tagline = 'Local-only Material 3 player. Your videos never leave the device.';
 
   static const githubLogin = 'mounsokdara';
