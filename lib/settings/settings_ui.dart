@@ -302,9 +302,7 @@ class MoreHub extends StatelessWidget {
               title: const Text('About'),
               subtitle: Text('Video Player ${AboutInfo.displayVersion}'),
               onTap: () async {
-                if (!context.mounted) return;
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutPage()));
-                onChanged();
+                await AndroidBridge.openPage('about');
               },
             ),
           ]),

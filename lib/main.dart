@@ -74,7 +74,7 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      appSettings.load().then((_) {
+      SharedPreferences.getInstance().then((p) => p.reload()).then((_) => appSettings.load()).then((_) {
         if (mounted) setState(() {});
       });
     }

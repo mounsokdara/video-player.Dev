@@ -372,6 +372,13 @@ class AndroidBridge {
     } catch (_) {}
   }
 
+  /// Opens a native XML page: 'about', 'licenses' or 'console'.
+  static Future<void> openPage(String page) async {
+    try {
+      await _ch.invokeMethod('openPage', {'page': page});
+    } catch (_) {}
+  }
+
   static Future<void> debugLog(String line) async {
     try {
       await _ch.invokeMethod('debugLog', {'line': line});

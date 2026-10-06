@@ -82,6 +82,24 @@
         </activity>
 
         <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:label="@string/about_title"
+            android:theme="@style/Theme.VideoPlayer.Page" />
+
+        <activity
+            android:name=".LicensesActivity"
+            android:exported="false"
+            android:label="@string/licenses_title"
+            android:theme="@style/Theme.VideoPlayer.Page" />
+
+        <activity
+            android:name=".ConsoleActivity"
+            android:exported="false"
+            android:label="@string/console_title"
+            android:theme="@style/Theme.VideoPlayer.Page" />
+
+        <activity
             android:name=".CrashReportActivity"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
