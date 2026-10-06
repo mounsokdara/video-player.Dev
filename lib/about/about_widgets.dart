@@ -19,11 +19,17 @@ class AboutSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(20)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    // A Material (not a decorated Container) so ripples of the rows / buttons inside the card are
+    // painted on the card itself instead of behind its opaque background.
+    return Material(
+      color: cs.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             width: 40,
@@ -41,7 +47,9 @@ class AboutSection extends StatelessWidget {
         ]),
         const SizedBox(height: 16),
         child,
-      ]),
+          ]),
+        ),
+      ),
     );
   }
 }

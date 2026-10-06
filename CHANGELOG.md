@@ -9,6 +9,9 @@ Equalizer:
 Settings:
 - On phones (tabs sidebar hidden) opening a category such as Accessibility, and going back, uses the system slide transition; the open category still survives rotation / resize
 
+Ripple:
+- Developer options switches, the GitHub button in the About page and the Equalizer card rows now show their ripple (the cards are Material surfaces instead of decorated containers that hid it)
+
 Cleanup:
 - Removed the unused package_info_plus dependency
 

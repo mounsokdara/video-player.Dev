@@ -1028,11 +1028,15 @@ class _EqualizerPageState extends State<EqualizerPage> {
 
   Widget _card(Widget child) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(20)),
-      child: child,
+    // Material so the switch rows inside paint their ripple on the card.
+    return Material(
+      color: cs.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: SizedBox(width: double.infinity, child: child),
+      ),
     );
   }
 
