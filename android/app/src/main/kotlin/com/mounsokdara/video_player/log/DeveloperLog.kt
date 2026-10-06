@@ -19,10 +19,6 @@ object DeveloperLog {
         prefs(context).edit().putBoolean(DEV, on).apply()
     }
 
-    fun setDebugEnabled(context: Context, on: Boolean) {
-        prefs(context).edit().putBoolean(DEBUG, on).apply()
-    }
-
     fun append(context: Context, line: String) {
         if (line == "__clear__") {
             try {

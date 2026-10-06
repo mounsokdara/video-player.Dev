@@ -121,17 +121,6 @@ extension PlayerSheets on _PlayerPageState {
         _ => Icons.tune,
       };
 
-  String? _actionSub(String id) => switch (id) {
-        'speed' => '${speed.toStringAsFixed(2)}×',
-        'zoom' => '${(_zoomScale * 100).round()}%',
-        'decoder' => appSettings.decoder.name.toUpperCase(),
-        'eq' => appSettings.eqEnabled ? 'On · ${appSettings.eqPreset}' : 'Off',
-        'background' => appSettings.backgroundPlay ? 'On' : 'Off',
-        'popup' => appSettings.autoMiniplayer ? 'On' : 'Off',
-        'navbar' => appSettings.alwaysHideNavBar ? 'Always hidden' : 'Follows controls',
-        _ => null,
-      };
-
   Future<void> _simple(String t, String b) async {
     if (!mounted) return;
     await SystemBars.modal(() => showDialog<void>(

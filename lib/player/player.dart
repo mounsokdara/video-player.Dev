@@ -99,7 +99,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   bool _leftOn = false;
   bool _rightOn = false;
   bool _midOn = false;
-  bool _midPlayingIcon = true;
   final _midBursts = <MidBurst>[];
   String? _currentSide;
   Timer? _leftHide;

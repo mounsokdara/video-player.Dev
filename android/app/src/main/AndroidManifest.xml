@@ -83,19 +83,19 @@
 
         <activity
             android:name=".AboutActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/about_title"
             android:theme="@style/Theme.VideoPlayer.Page" />
 
         <activity
             android:name=".LicensesActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/licenses_title"
             android:theme="@style/Theme.VideoPlayer.Page" />
 
         <activity
             android:name=".ConsoleActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/console_title"
             android:theme="@style/Theme.VideoPlayer.Page" />
 
@@ -107,7 +107,7 @@
 
         <activity
             android:name=".SettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/settings_title"
             android:launchMode="standard"
             android:theme="@style/LaunchTheme"

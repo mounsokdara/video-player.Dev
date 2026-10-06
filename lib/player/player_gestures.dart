@@ -323,7 +323,6 @@ extension PlayerGestures on _PlayerPageState {
     _midOn = true;
     final playing = vc?.value.isPlaying ?? false;
     _togglePlay();
-    _midPlayingIcon = !playing;
     _spawnRipple(TapZone.middle, pos, size);
     _midBursts.add(MidBurst(id: _rippleSeq, playing: !playing));
     _midHide?.cancel();

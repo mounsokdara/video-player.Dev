@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/crash_bg" android:orientation="vertical"
+    android:paddingLeft="20dp" android:paddingTop="28dp" android:paddingRight="20dp" android:paddingBottom="20dp">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/crash_title" android:textColor="@color/crash_title" android:textSize="22sp"/>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <TextView android:id="@+id/crash_body" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:fontFamily="monospace" android:textColor="@color/crash_body" android:textSize="13sp"
+            android:textIsSelectable="true"/>
+    </ScrollView>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="end" android:orientation="horizontal">
+        <Button android:id="@+id/crash_copy" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/crash_copy"/>
+        <Button android:id="@+id/crash_close" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/crash_close"/>
+    </LinearLayout>
+</LinearLayout>

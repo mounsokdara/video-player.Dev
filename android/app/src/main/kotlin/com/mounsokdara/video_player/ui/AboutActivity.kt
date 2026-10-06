@@ -45,7 +45,7 @@ class AboutActivity : PageActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_about)
         root = findViewById(R.id.root)
-        setupPage(root, findViewById<MaterialToolbar>(R.id.toolbar), getString(R.string.about_title))
+        setupPage(root, findViewById<MaterialToolbar>(R.id.toolbar), getString(R.string.about_title), findViewById(R.id.scroll))
         findViewById<TextView>(R.id.about_name).text = AboutInfo.NAME
 
         bindRow(R.id.row_author, getString(R.string.about_created_by), AboutInfo.AUTHOR)

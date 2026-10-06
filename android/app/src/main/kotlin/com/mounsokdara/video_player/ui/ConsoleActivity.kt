@@ -14,7 +14,7 @@ class ConsoleActivity : PageActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_console)
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
-        setupPage(findViewById(R.id.root), toolbar, getString(R.string.console_title))
+        setupPage(findViewById(R.id.root), toolbar, getString(R.string.console_title), findViewById(R.id.scroll))
         text = findViewById(R.id.console_text)
         toolbar.inflateMenu(R.menu.console_menu)
         toolbar.setOnMenuItemClickListener { item ->

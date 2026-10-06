@@ -20,7 +20,7 @@ class LicensesActivity : PageActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_licenses)
-        setupPage(findViewById(R.id.root), findViewById<MaterialToolbar>(R.id.toolbar), getString(R.string.licenses_title))
+        setupPage(findViewById(R.id.root), findViewById<MaterialToolbar>(R.id.toolbar), getString(R.string.licenses_title), findViewById(R.id.list))
         findViewById<TextView>(R.id.header).text =
             "${AboutInfo.NAME} ${AboutInfo.VERSION}\nLocal-only Android player. Material 3.\nCreated by ${AboutInfo.AUTHOR}."
         val list = findViewById<RecyclerView>(R.id.list)

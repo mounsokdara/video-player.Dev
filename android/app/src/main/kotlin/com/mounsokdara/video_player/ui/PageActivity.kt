@@ -1,13 +1,9 @@
 package com.mounsokdara.video_player
 
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
@@ -17,7 +13,6 @@ open class PageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
     }
 
     private fun applyAppTheme() {
@@ -44,17 +39,12 @@ open class PageActivity : AppCompatActivity() {
         }
     }
 
-    protected fun setupPage(root: View, toolbar: MaterialToolbar, title: CharSequence) {
+    /** [scrollers]: lists/scroll views that should scroll under the navigation bar (see [SafeZone]). */
+    protected fun setupPage(root: View, toolbar: MaterialToolbar, title: CharSequence, vararg scrollers: View) {
         toolbar.title = title
         toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
         toolbar.setNavigationContentDescription(R.string.navigate_back)
         toolbar.setNavigationOnClickListener { finish() }
-        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            WindowInsetsCompat.CONSUMED
-        }
-        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        WindowCompat.getInsetsController(window, root).isAppearanceLightStatusBars = !night
+        SafeZone.install(this, root, scrollers.toList())
     }
 }

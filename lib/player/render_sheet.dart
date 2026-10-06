@@ -33,11 +33,6 @@ class _RenderSheetState extends State<_RenderSheet> {
     _sdr = _e?.sdrMode ?? false;
   }
 
-  Future<void> _commit() async {
-    await _rs.save();
-    await _e?.reapplyRender();
-  }
-
   Widget _title(String text) {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 8),
