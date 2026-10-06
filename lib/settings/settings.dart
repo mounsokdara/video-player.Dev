@@ -101,7 +101,7 @@ class AppSettings {
   static const tabLabels = <String, String>{
     'videos': 'Videos',
     'folders': 'Folders',
-    'settings': 'Settings',
+    'settings': 'More',
   };
 
   static const defaultQuickActions = <String>['screenshot', 'background', 'speed'];

@@ -243,6 +243,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(PlaybackSession.onAway());
     } else if (state == AppLifecycleState.resumed) {
       unawaited(PlaybackSession.onBack());
+      // The Settings activity runs in its own engine and saves to prefs;
+      // pick its changes up (tabs, theme, ...) when we come back.
+      unawaited(appSettings.load().then((_) {
+        if (mounted) setState(() {});
+      }));
       unawaited(() async {
         final had = library.allFiles;
         library.allFiles = await AndroidBridge.hasAllFilesAccess();
@@ -493,7 +498,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           onOverflow: _onOverflow,
           onRefresh: _refresh,
         ),
-      'settings' => SettingsHub(onChanged: widget.onSettingsChanged),
+      'settings' => MoreHub(onChanged: widget.onSettingsChanged),
       _ => const SizedBox.shrink(),
     };
     Navigator.of(context).push(MaterialPageRoute(
@@ -612,7 +617,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ),
           );
         case 'settings':
-          return SettingsHub(onChanged: widget.onSettingsChanged);
+          return MoreHub(onChanged: widget.onSettingsChanged);
         default:
           return VideosHub(
             loading: loading,
@@ -657,7 +662,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     NavigationDestination dest(String id) {
       return switch (id) {
         'folders' => const NavigationDestination(icon: Icon(Icons.folder_outlined), selectedIcon: Icon(Icons.folder), label: 'Folders'),
-        'settings' => const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+        'settings' => const NavigationDestination(icon: Icon(Icons.more_horiz), selectedIcon: Icon(Icons.more_horiz), label: 'More'),
         _ => const NavigationDestination(icon: Icon(Icons.play_circle_outline), selectedIcon: Icon(Icons.play_circle), label: 'Videos'),
       };
     }
@@ -665,7 +670,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     NavigationRailDestination rail(String id) {
       return switch (id) {
         'folders' => const NavigationRailDestination(icon: Icon(Icons.folder_outlined), selectedIcon: Icon(Icons.folder), label: Text('Folders')),
-        'settings' => const NavigationRailDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: Text('Settings')),
+        'settings' => const NavigationRailDestination(icon: Icon(Icons.more_horiz), selectedIcon: Icon(Icons.more_horiz), label: Text('More')),
         _ => const NavigationRailDestination(icon: Icon(Icons.play_circle_outline), selectedIcon: Icon(Icons.play_circle), label: Text('Videos')),
       };
     }

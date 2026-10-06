@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Video Player</string>
+    <string name="settings_title">Settings</string>
     <string name="playback_channel">Playback</string>
     <string name="playback_channel_desc">Now playing controls</string>
     <string name="crash_title">Crash report</string>

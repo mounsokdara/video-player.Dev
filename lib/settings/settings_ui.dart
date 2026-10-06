@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:video_player_app/native/android_bridge.dart';
@@ -15,44 +16,185 @@ import 'package:video_player_app/playback/session.dart';
 import 'package:video_player_app/core/material_you.dart';
 import 'package:video_player_app/core/widgets.dart';
 
+/// One entry in the settings sidebar / category list.
+class _SettingsCategory {
+  const _SettingsCategory(this.icon, this.title, this.sub, this.build);
+  final IconData icon;
+  final String title;
+  final String sub;
+  final Widget Function(VoidCallback onChanged) build;
+}
+
+final _settingsCategories = <_SettingsCategory>[
+  _SettingsCategory(Icons.tune, 'General', 'Library, scanning, tabs, storage', (c) => GeneralSettings(onChanged: c)),
+  _SettingsCategory(Icons.videocam_outlined, 'Video', 'Display, playback, decoder, gestures', (c) => VideoSettings(onChanged: c)),
+  _SettingsCategory(Icons.accessibility_new, 'Accessibility', 'Color filters, motion, text', (c) => AccessSettings(onChanged: c)),
+  _SettingsCategory(Icons.palette_outlined, 'Theme', 'Dark / light / system and seed color', (c) => ThemeSettings(onChanged: c)),
+];
+
+/// Width from which the Settings screen shows its tabs sidebar.
+const double kSettingsSidebarWidth = 840;
+
+/// Root of the Settings activity (`/settings`).
+/// Phones: category list. Large screens: tabs sidebar on the left, the
+/// selected category on the right.
+class SettingsHost extends StatefulWidget {
+  const SettingsHost({super.key, required this.onChanged});
+  final VoidCallback onChanged;
+
+  @override
+  State<SettingsHost> createState() => _SettingsHostState();
+}
+
+class _SettingsHostState extends State<SettingsHost> {
+  int _selected = 0;
+
+  void _close() => SystemNavigator.pop();
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= kSettingsSidebarWidth;
+    if (!wide) {
+      return Scaffold(
+        body: SettingsHub(onChanged: widget.onChanged, onBack: _close),
+      );
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final pad = MediaQuery.viewPaddingOf(context);
+    final cat = _settingsCategories[_selected];
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.only(left: pad.left, right: pad.right),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 300,
+              child: Material(
+                color: scheme.surfaceContainerLow,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(12, pad.top + 8, 12, pad.bottom + 16),
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          tooltip: 'Back',
+                          onPressed: _close,
+                        ),
+                        const SizedBox(width: 4),
+                        Text('Settings', style: Theme.of(context).textTheme.titleLarge),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (var i = 0; i < _settingsCategories.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: ListTile(
+                          selected: i == _selected,
+                          selectedTileColor: scheme.secondaryContainer,
+                          selectedColor: scheme.onSecondaryContainer,
+                          shape: const StadiumBorder(),
+                          leading: Icon(_settingsCategories[i].icon),
+                          title: Text(_settingsCategories[i].title),
+                          onTap: () => setState(() => _selected = i),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: KeyedSubtree(
+                key: ValueKey(_selected),
+                child: cat.build(widget.onChanged),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Category list shown on phones inside the Settings activity.
 class SettingsHub extends StatelessWidget {
-  const SettingsHub({super.key, required this.onChanged});
+  const SettingsHub({super.key, required this.onChanged, this.onBack});
+  final VoidCallback onChanged;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final pad = MediaQuery.viewPaddingOf(context);
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          leading: onBack == null ? null : BackButton(onPressed: onBack),
+          title: const Text('Settings'),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: pad.bottom + 24),
+          sliver: SliverList.list(children: [
+            for (final c in _settingsCategories)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  foregroundColor: scheme.onSurface,
+                  child: Icon(c.icon),
+                ),
+                title: Text(c.title),
+                subtitle: Text(c.sub),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => c.build(onChanged)));
+                  onChanged();
+                },
+              ),
+          ]),
+        ),
+      ],
+    );
+  }
+}
+
+/// The "More" tab: opens the Settings activity, plus equalizer, crash report, about.
+class MoreHub extends StatelessWidget {
+  const MoreHub({super.key, required this.onChanged});
   final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final pad = MediaQuery.viewPaddingOf(context);
-    Widget tile(IconData icon, String title, String sub, Widget page) {
-      return ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.surfaceContainerHighest,
-          foregroundColor: scheme.onSurface,
-          child: Icon(icon),
-        ),
-        title: Text(title),
-        subtitle: Text(sub),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-          onChanged();
-        },
-      );
-    }
-
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
-          pinned: true,
-          title: const Text('Settings'),
-        ),
+        const SliverAppBar(pinned: true, title: Text('More')),
         SliverPadding(
           padding: EdgeInsets.only(bottom: pad.bottom + 24),
           sliver: SliverList.list(children: [
-            tile(Icons.tune, 'General', 'Library, scanning, tabs, storage', GeneralSettings(onChanged: onChanged)),
-            tile(Icons.videocam_outlined, 'Video', 'Display, playback, decoder, gestures', VideoSettings(onChanged: onChanged)),
-            tile(Icons.accessibility_new, 'Accessibility', 'Color filters, motion, text', AccessSettings(onChanged: onChanged)),
-            tile(Icons.palette_outlined, 'Theme', 'Dark / light / system and seed color', ThemeSettings(onChanged: onChanged)),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: scheme.surfaceContainerHighest,
+                foregroundColor: scheme.onSurface,
+                child: const Icon(Icons.settings_outlined),
+              ),
+              title: const Text('Settings'),
+              subtitle: const Text('General, video, accessibility, theme'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () async {
+                final ok = await AndroidBridge.openSettings();
+                if (!ok && context.mounted) {
+                  // Native screen unavailable: fall back to the in-app list.
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => Scaffold(body: SettingsHub(onChanged: onChanged))),
+                  );
+                  onChanged();
+                }
+              },
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.equalizer),

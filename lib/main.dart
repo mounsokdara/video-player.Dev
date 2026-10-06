@@ -12,6 +12,7 @@ import 'package:video_player_app/core/insets.dart';
 import 'package:video_player_app/library/library.dart';
 import 'package:video_player_app/core/models.dart';
 import 'package:video_player_app/settings/settings.dart';
+import 'package:video_player_app/settings/settings_ui.dart';
 import 'package:video_player_app/core/theme.dart';
 
 export 'package:video_player_app/settings/settings.dart';
@@ -68,6 +69,11 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
     }
   }
 
+  void _settingsChanged() {
+    setState(() {});
+    appSettings.save();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
@@ -113,6 +119,14 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 ),
               ];
             }
+            if (name == '/settings' || name.endsWith('/settings')) {
+              return [
+                MaterialPageRoute<void>(
+                  settings: const RouteSettings(name: '/settings'),
+                  builder: (_) => SettingsHost(onChanged: _settingsChanged),
+                ),
+              ];
+            }
             return [
               MaterialPageRoute<void>(
                 settings: const RouteSettings(name: '/'),
@@ -130,6 +144,12 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
               return MaterialPageRoute<void>(
                 settings: settings,
                 builder: (_) => const VideoPickerPage(),
+              );
+            }
+            if (settings.name == '/settings') {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => SettingsHost(onChanged: _settingsChanged),
               );
             }
             return MaterialPageRoute<void>(

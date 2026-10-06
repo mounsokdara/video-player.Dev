@@ -54,6 +54,11 @@ class AppNative(
                 result.success(true)
                 return true
             }
+            NativeConstants.Method.OPEN_SETTINGS -> {
+                activity.startActivity(Intent(activity, SettingsActivity::class.java))
+                result.success(true)
+                return true
+            }
             NativeConstants.Method.DEBUG_LOG -> {
                 DeveloperLog.append(activity, call.argument<String>("line") ?: "")
                 result.success(true)

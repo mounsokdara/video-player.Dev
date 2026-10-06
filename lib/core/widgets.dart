@@ -285,12 +285,17 @@ Future<T?> showAppSheet<T>({
   double initial = 0.56,
 }) {
   final pad = SystemBars.rawOf(context);
+  // Landscape phones are short: open the sheet (nearly) full height so the
+  // actions are not cut off, and keep it a readable width on wide screens.
+  final short = MediaQuery.sizeOf(context).height < 520;
+  final startSize = short ? 0.95 : initial;
   return SystemBars.modal(
     () => showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       enableDrag: true,
       showDragHandle: false,
+      constraints: const BoxConstraints(maxWidth: 640),
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
@@ -298,7 +303,7 @@ Future<T?> showAppSheet<T>({
           padding: EdgeInsets.only(left: pad.left, right: pad.right),
           child: DraggableScrollableSheet(
             expand: false,
-            initialChildSize: initial.clamp(0.38, 0.92).toDouble(),
+            initialChildSize: startSize.clamp(0.38, 0.95).toDouble(),
             minChildSize: 0.28,
             maxChildSize: 0.95,
             builder: (_, sc) {

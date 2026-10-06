@@ -24,6 +24,15 @@ class AndroidBridge {
     return _events!;
   }
 
+  /// Opens the native Settings activity (separate screen, own back stack).
+  static Future<bool> openSettings() async {
+    try {
+      return await _ch.invokeMethod<bool>('openSettings') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<int> sdkInt() async {
     try {
       return await _ch.invokeMethod<int>('sdkInt') ?? 0;
