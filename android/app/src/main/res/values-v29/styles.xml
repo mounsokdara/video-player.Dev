@@ -4,20 +4,18 @@
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/app_window_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-    <style name="PageAnimation" parent="@android:style/Animation.Activity">
-        <item name="android:activityOpenEnterAnimation">@anim/page_open_enter</item>
-        <item name="android:activityOpenExitAnimation">@anim/page_open_exit</item>
-        <item name="android:activityCloseEnterAnimation">@anim/page_close_enter</item>
-        <item name="android:activityCloseExitAnimation">@anim/page_close_exit</item>
-    </style>
-    <!-- Launch theme + slide/fade transition for the dedicated Flutter page activities. -->
-    <style name="PageLaunchTheme" parent="LaunchTheme">
-        <item name="android:windowAnimationStyle">@style/PageAnimation</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

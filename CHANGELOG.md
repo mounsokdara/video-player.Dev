@@ -16,6 +16,7 @@ Cleanup:
 - Removed the unused package_info_plus dependency
 
 System navigation bar:
+- No more black bar where the navigation bar is while a page (for example Settings) slides in: the status / navigation bars are transparent from the moment the window is created (themes + early edge-to-edge setup), with no contrast scrim
 - Bottom sheets now end above the navigation bar instead of scrolling under it, so the last action (for example Properties) is never covered by the bar buttons
 - About and Open source licenses pages keep clear of the side / bottom bar and cutouts
 

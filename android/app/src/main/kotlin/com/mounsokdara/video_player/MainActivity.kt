@@ -80,6 +80,9 @@ open class MainActivity : FlutterActivity() {
             isPlaying
         ) { isPlaying = it }
         appNative = AppNative(this, systemBars, audioFocus, equalizer)
+        // Transparent bars before the first frame, so a page sliding in never shows a black bar
+        // where the navigation bar is; again after super.onCreate (Flutter swaps the theme there).
+        systemBars.enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         systemBars.enableEdgeToEdge()
         NativeCrashLog.installHook(this) { emit(it) }
