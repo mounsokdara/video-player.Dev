@@ -4,6 +4,12 @@
     <string name="settings_title">Settings</string>
     <string name="licenses_title">Open source licenses</string>
     <string name="console_title">Console</string>
+    <string name="about_title">About</string>
+    <string name="equalizer_title">Equalizer</string>
+    <string name="general_settings_title">General settings</string>
+    <string name="video_settings_title">Video settings</string>
+    <string name="accessibility_settings_title">Accessibility settings</string>
+    <string name="theme_settings_title">Theme settings</string>
     <string name="playback_channel">Playback</string>
     <string name="playback_channel_desc">Now playing controls</string>
 </resources>

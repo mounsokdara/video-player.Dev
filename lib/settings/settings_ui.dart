@@ -16,6 +16,7 @@ import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/playback/session.dart';
 import 'package:video_player_app/core/material_you.dart';
 import 'package:video_player_app/core/widgets.dart';
+import 'package:video_player_app/about/about_widgets.dart' show standaloneBack;
 
 /// One entry in the settings sidebar / category list.
 class _SettingsCategory {
@@ -32,6 +33,19 @@ final _settingsCategories = <_SettingsCategory>[
   _SettingsCategory(Icons.accessibility_new, 'Accessibility', 'Color filters, motion, text', (c) => AccessSettings(onChanged: c)),
   _SettingsCategory(Icons.palette_outlined, 'Theme', 'Dark / light / system and seed color', (c) => ThemeSettings(onChanged: c)),
 ];
+
+/// Route name -> index in [_settingsCategories], for the per-category activities.
+const _standaloneCategory = {'/general': 0, '/video': 1, '/accessibility': 2, '/theme': 3};
+
+/// Full-screen page for an activity that shows one settings category (or the equalizer) on its own,
+/// or null for any other route. Reuses the same widgets as the Settings activity; the back arrow
+/// closes the activity.
+Widget? standaloneSettingsPage(String route, VoidCallback onChanged) {
+  if (route == '/equalizer') return const EqualizerPage();
+  final i = _standaloneCategory[route];
+  if (i == null) return null;
+  return _SettingsBack(onBack: SystemNavigator.pop, child: _settingsCategories[i].build(onChanged));
+}
 
 /// Width from which the Settings screen shows its tabs sidebar.
 const double kSettingsSidebarWidth = 840;
@@ -861,6 +875,7 @@ class _EqualizerPageState extends State<EqualizerPage> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
+        leading: standaloneBack(context),
         title: const Text('Equalizer'),
         actions: [
           Switch(

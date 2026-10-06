@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:video_player_app/about/about_page.dart';
 import 'package:video_player_app/about/console_page.dart';
 import 'package:video_player_app/about/licenses_page.dart';
 import 'package:video_player_app/core/crash.dart';
@@ -87,6 +88,20 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
     appSettings.save();
   }
 
+  /// Pages that also run as their own launchable activity (see the *Activity.kt classes).
+  Widget? _standalone(String route) {
+    switch (route) {
+      case '/about':
+        return const AboutPage();
+      case '/licenses':
+        return const LicensesPage();
+      case '/console':
+        return const ConsolePage();
+      default:
+        return standaloneSettingsPage(route, _settingsChanged);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
@@ -127,19 +142,12 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 ),
               ];
             }
-            if (name == '/licenses' || name.endsWith('/licenses')) {
+            final leaf = name.contains('/') ? _standalone(name.substring(name.lastIndexOf('/'))) : null;
+            if (leaf != null) {
               return [
                 MaterialPageRoute<void>(
-                  settings: const RouteSettings(name: '/licenses'),
-                  builder: (_) => const LicensesPage(),
-                ),
-              ];
-            }
-            if (name == '/console' || name.endsWith('/console')) {
-              return [
-                MaterialPageRoute<void>(
-                  settings: const RouteSettings(name: '/console'),
-                  builder: (_) => const ConsolePage(),
+                  settings: RouteSettings(name: name),
+                  builder: (_) => leaf,
                 ),
               ];
             }
@@ -170,11 +178,9 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 builder: (_) => const VideoPickerPage(),
               );
             }
-            if (settings.name == '/licenses') {
-              return MaterialPageRoute<void>(settings: settings, builder: (_) => const LicensesPage());
-            }
-            if (settings.name == '/console') {
-              return MaterialPageRoute<void>(settings: settings, builder: (_) => const ConsolePage());
+            final page = settings.name == null ? null : _standalone(settings.name!);
+            if (page != null) {
+              return MaterialPageRoute<void>(settings: settings, builder: (_) => page);
             }
             if (settings.name == '/settings') {
               return MaterialPageRoute<void>(

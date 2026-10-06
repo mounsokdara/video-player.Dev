@@ -86,7 +86,7 @@
             android:exported="true"
             android:label="@string/settings_title"
             android:launchMode="standard"
-            android:theme="@style/LaunchTheme"
+            android:theme="@style/PageLaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
@@ -101,11 +101,125 @@
         </activity>
 
         <activity
+            android:name=".AboutActivity"
+            android:exported="true"
+            android:label="@string/about_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/about" />
+        </activity>
+
+        <activity
+            android:name=".EqualizerActivity"
+            android:exported="true"
+            android:label="@string/equalizer_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/equalizer" />
+        </activity>
+
+        <activity
+            android:name=".GeneralSettingsActivity"
+            android:exported="true"
+            android:label="@string/general_settings_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/general" />
+        </activity>
+
+        <activity
+            android:name=".VideoSettingsActivity"
+            android:exported="true"
+            android:label="@string/video_settings_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/video" />
+        </activity>
+
+        <activity
+            android:name=".AccessibilitySettingsActivity"
+            android:exported="true"
+            android:label="@string/accessibility_settings_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/accessibility" />
+        </activity>
+
+        <activity
+            android:name=".ThemeSettingsActivity"
+            android:exported="true"
+            android:label="@string/theme_settings_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/theme" />
+        </activity>
+
+        <activity
             android:name=".LicensesActivity"
             android:exported="true"
             android:label="@string/licenses_title"
             android:launchMode="standard"
-            android:theme="@style/LaunchTheme"
+            android:theme="@style/PageLaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
@@ -124,7 +238,7 @@
             android:exported="true"
             android:label="@string/console_title"
             android:launchMode="standard"
-            android:theme="@style/LaunchTheme"
+            android:theme="@style/PageLaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"

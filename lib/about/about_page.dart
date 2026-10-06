@@ -52,7 +52,7 @@ class _AboutPageState extends State<AboutPage> {
     final bottom = MediaQuery.viewPaddingOf(context).bottom;
     return Scaffold(
       body: CustomScrollView(slivers: [
-        const SliverAppBar(pinned: true, title: Text('About')),
+        SliverAppBar(pinned: true, leading: standaloneBack(context), title: const Text('About')),
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
