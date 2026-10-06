@@ -304,8 +304,9 @@ open class MainActivity : FlutterActivity() {
                             val path = call.argument<String>("path")
                                 ?: return@setMethodCallHandler result.error("ARG", "path", null)
                             val positionMs = call.argument<Int>("positionMs") ?: 0
+                            val longEdge = call.argument<Int>("longEdge") ?: 180
                             io.execute {
-                                val bytes = previewJpeg(path, positionMs.toLong())
+                                val bytes = previewJpeg(path, positionMs.toLong(), longEdge)
                                 mainHandler.post { result.success(bytes) }
                             }
                         }
@@ -395,6 +396,7 @@ open class MainActivity : FlutterActivity() {
             return
         }
         if (path == previewBoundPath && previewRetriever != null) return
+        previewScaledOk = true
         try { previewRetriever?.release() } catch (_: Exception) {}
         previewRetriever = null
         previewBoundPath = null
@@ -940,17 +942,17 @@ open class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun previewJpeg(path: String, positionMs: Long): ByteArray? {
+    private fun previewJpeg(path: String, positionMs: Long, longEdge: Int): ByteArray? {
         if (previewBoundPath != path || previewRetriever == null) bindPreview(path)
         val retriever = previewRetriever
         if (retriever != null) {
             try {
-                return frameToJpeg(retriever, positionMs)
+                return frameToJpeg(retriever, positionMs, longEdge)
             } catch (_: Exception) {
                 bindPreview(path)
                 previewRetriever?.let {
                     return try {
-                        frameToJpeg(it, positionMs)
+                        frameToJpeg(it, positionMs, longEdge)
                     } catch (_: Exception) {
                         null
                     }
@@ -960,28 +962,57 @@ open class MainActivity : FlutterActivity() {
         return null
     }
 
-    private fun frameToJpeg(retriever: MediaMetadataRetriever, positionMs: Long): ByteArray? {
+    // false once getScaledFrameAtTime proved to return a distorted aspect for this video.
+    private var previewScaledOk = true
+
+    private fun frameToJpeg(retriever: MediaMetadataRetriever, positionMs: Long, longEdge: Int): ByteArray? {
         val us = positionMs * 1000
         val option = MediaMetadataRetriever.OPTION_PREVIOUS_SYNC
-        val bmp: Bitmap? = if (Build.VERSION.SDK_INT >= 27) {
-            retriever.getScaledFrameAtTime(us, option, 180, 102)
-                ?: retriever.getScaledFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST, 180, 102)
-        } else {
+        val edge = longEdge.coerceIn(120, 720)
+        var vw = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+        var vh = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+        val rot = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        if (rot == 90 || rot == 270) { val t = vw; vw = vh; vh = t }
+        val ar = if (vw > 0 && vh > 0) vw.toFloat() / vh else 16f / 9f
+        // Keep the video's own aspect ratio: no stretching, no cropping.
+        val dw = if (ar >= 1f) edge else (edge * ar).toInt().coerceAtLeast(1)
+        val dh = if (ar >= 1f) (edge / ar).toInt().coerceAtLeast(1) else edge
+
+        var bmp: Bitmap? = null
+        if (Build.VERSION.SDK_INT >= 27 && previewScaledOk) {
+            bmp = retriever.getScaledFrameAtTime(us, option, dw, dh)
+                ?: retriever.getScaledFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST, dw, dh)
+            if (bmp != null) {
+                val got = bmp.width.toFloat() / bmp.height
+                val want = dw.toFloat() / dh
+                if (Math.abs(got / want - 1f) > 0.06f) {
+                    previewScaledOk = false
+                    bmp.recycle()
+                    bmp = null
+                }
+            }
+        }
+        if (bmp == null) {
             val full = retriever.getFrameAtTime(us, option) ?: retriever.frameAtTime
-            if (full == null) {
-                null
-            } else if (full.width > 180) {
-                val h = (full.height * 180f / full.width).toInt().coerceAtLeast(1)
-                val scaled = Bitmap.createScaledBitmap(full, 180, h, true)
-                if (scaled !== full) full.recycle()
-                scaled
-            } else {
-                full
+            if (full != null) {
+                val sc = edge.toFloat() / maxOf(full.width, full.height)
+                bmp = if (sc < 1f) {
+                    val scaled = Bitmap.createScaledBitmap(
+                        full,
+                        (full.width * sc).toInt().coerceAtLeast(1),
+                        (full.height * sc).toInt().coerceAtLeast(1),
+                        true
+                    )
+                    if (scaled !== full) full.recycle()
+                    scaled
+                } else {
+                    full
+                }
             }
         }
         if (bmp == null) return null
         val out = java.io.ByteArrayOutputStream()
-        bmp.compress(Bitmap.CompressFormat.JPEG, 40, out)
+        bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
         bmp.recycle()
         return out.toByteArray()
     }

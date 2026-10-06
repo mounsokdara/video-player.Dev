@@ -32,6 +32,18 @@ class EngineValue {
   final Duration position;
   final Duration duration;
   final Size size;
+
+  EngineValue withPosition(Duration p) => EngineValue(
+        isInitialized: isInitialized,
+        isPlaying: isPlaying,
+        isBuffering: isBuffering,
+        hasError: hasError,
+        completed: completed,
+        errorDescription: errorDescription,
+        position: p,
+        duration: duration,
+        size: size,
+      );
 }
 
 class PlaybackEngine extends ChangeNotifier {
@@ -437,6 +449,27 @@ class PlaybackEngine extends ChangeNotifier {
     ]);
   }
 
+  // While a seek is in flight mpv reports the old position and the target
+  // alternately, which made the seek bar ping-pong. After a seek we publish the
+  // target and ignore mpv's position until it settles near the target.
+  Duration? _seekTarget;
+  DateTime _seekAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _seekMinHold = Duration(milliseconds: 250);
+  static const _seekMaxHold = Duration(milliseconds: 1200);
+  static const _seekTolerance = Duration(milliseconds: 1200);
+
+  Duration _shownPosition(Player player) {
+    final real = player.state.position;
+    final target = _seekTarget;
+    if (target == null) return real;
+    final age = DateTime.now().difference(_seekAt);
+    if (age >= _seekMaxHold || (age >= _seekMinHold && (real - target).abs() <= _seekTolerance)) {
+      _seekTarget = null;
+      return real;
+    }
+    return target;
+  }
+
   void _emit(Player player) {
     if (value.hasError) return;
     final size = _sizeOf(player);
@@ -448,7 +481,7 @@ class PlaybackEngine extends ChangeNotifier {
       isBuffering: player.state.buffering,
       hasError: false,
       completed: playing ? false : value.completed,
-      position: player.state.position,
+      position: _shownPosition(player),
       duration: player.state.duration,
       size: size,
     );
@@ -486,6 +519,12 @@ class PlaybackEngine extends ChangeNotifier {
     DeveloperLog.player('seek ' + d.inMilliseconds.toString() + 'ms' + (fast ? ' (keyframe)' : ''));
     final player = _player;
     if (player == null) return;
+    _seekTarget = d;
+    _seekAt = DateTime.now();
+    if (!value.hasError) {
+      value = value.withPosition(d);
+      notifyListeners();
+    }
     if (fast) {
       try {
         final platform = player.platform;
@@ -511,6 +550,7 @@ class PlaybackEngine extends ChangeNotifier {
     if (_closed) return;
     DeveloperLog.player('close');
     _closed = true;
+    _seekTarget = null;
     wantPlay = false;
     _openSeq++;
     _alive.remove(this);

@@ -304,11 +304,12 @@ class AndroidBridge {
     return null;
   }
 
-  static Future<Uint8List?> previewFrame({required String path, required int positionMs}) async {
+  static Future<Uint8List?> previewFrame({required String path, required int positionMs, int longEdge = 180}) async {
     try {
       final raw = await _ch.invokeMethod('previewFrame', {
         'path': path,
         'positionMs': positionMs,
+        'longEdge': longEdge,
       });
       if (raw is Uint8List) return raw;
       if (raw is List<int>) return Uint8List.fromList(raw);

@@ -84,7 +84,9 @@ extension PlayerGestures on _PlayerPageState {
         _scrub != null &&
         c != null) {
       final dur = c.value.duration.inMilliseconds;
-      unawaited(c.seekTo(Duration(milliseconds: (_scrub! * dur).round()), fast: true));
+      final target = Duration(milliseconds: (_scrub! * dur).round());
+      _posTick.value = target.inMilliseconds;
+      unawaited(c.seekTo(target, fast: true));
     }
     panKind = '';
     panStart = null;
@@ -368,12 +370,50 @@ extension PlayerGestures on _PlayerPageState {
       _previewWant = null;
       final dur = vc?.value.duration.inMilliseconds ?? 0;
       if (dur <= 0) break;
+      final dpr = MediaQuery.of(context).devicePixelRatio;
       final bytes = await AndroidBridge.previewFrame(
         path: item.path,
         positionMs: (frac.clamp(0.0, 1.0) * dur).round(),
+        longEdge: (168 * dpr).round(),
       );
-      if (mounted && _scrub != null) setState(() => _previewBytes = bytes);
+      // Keep the last frame if one fails, so the preview never blinks off mid-scrub.
+      if (bytes != null && mounted && _scrub != null) {
+        final sz = _jpegSize(bytes);
+        setState(() {
+          if (sz != null && sz.width > 0 && sz.height > 0) _previewAspect = sz.width / sz.height;
+          _previewBytes = bytes;
+        });
+      }
     }
     _previewBusy = false;
   }
+}
+
+/// Reads width/height from a JPEG header without decoding it.
+Size? _jpegSize(Uint8List b) {
+  if (b.length < 4 || b[0] != 0xFF || b[1] != 0xD8) return null;
+  var i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] != 0xFF) {
+      i++;
+      continue;
+    }
+    final m = b[i + 1];
+    if (m == 0xFF) {
+      i++;
+      continue;
+    }
+    if (m == 0xD8 || m == 0x01 || (m >= 0xD0 && m <= 0xD7)) {
+      i += 2;
+      continue;
+    }
+    final len = (b[i + 2] << 8) | b[i + 3];
+    if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {
+      final h = (b[i + 5] << 8) | b[i + 6];
+      final w = (b[i + 7] << 8) | b[i + 8];
+      return Size(w.toDouble(), h.toDouble());
+    }
+    i += 2 + len;
+  }
+  return null;
 }

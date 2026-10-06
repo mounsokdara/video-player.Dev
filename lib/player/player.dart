@@ -79,6 +79,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   double _pinchBase = 1;
   double? _scrub;
   Uint8List? _previewBytes;
+  double _previewAspect = 16 / 9;
   int _playerGen = 0;
   double? _systemBrightness;
   Offset _zoomPan = Offset.zero;
@@ -622,6 +623,48 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     } catch (_) {}
   }
 
+  /// Preview thumbnail size: fixed long edge, the video's own aspect ratio.
+  Size _previewBox() {
+    const edge = 168.0;
+    final ar = _previewAspect.clamp(0.4, 2.4).toDouble();
+    return ar >= 1 ? Size(edge, edge / ar) : Size(edge * ar, edge);
+  }
+
+  Widget _previewImage() {
+    final box = _previewBox();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 10)],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          _previewBytes!,
+          width: box.width,
+          height: box.height,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
+          isAntiAlias: true,
+        ),
+      ),
+    );
+  }
+
+  /// Finish a scrub: show the target position at once (no snap back to the old
+  /// position while the seek runs), then seek.
+  Future<void> _commitSeek(PlaybackEngine c, Duration target) async {
+    _posTick.value = target.inMilliseconds;
+    if (mounted) {
+      setState(() {
+        _scrub = null;
+        _previewBytes = null;
+      });
+    }
+    await c.seekTo(target, fast: true);
+  }
+
   Future<void> _seekBy(int seconds) async {
     final c = vc;
     if (c == null) return;
@@ -1121,10 +1164,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                 bottom: 96 + pad.bottom,
                 child: IgnorePointer(
                   child: Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(_previewBytes!, width: 160, height: 90, fit: BoxFit.cover),
-                    ),
+                    child: _previewImage(),
                   ),
                 ),
               ),
@@ -1586,22 +1626,14 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                           child: Container(width: 2, height: 22, color: color),
                         );
                       }
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
+                      const sliderInset = 20.0;
+                      final pw = _previewBox().width;
+                      final thumbX = sliderInset + frac * (box.maxWidth - sliderInset * 2);
+                      final previewLeft = (thumbX - pw / 2).clamp(0.0, (box.maxWidth - pw).clamp(0.0, double.infinity)).toDouble();
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
                         children: [
-                          if (_scrub != null && _previewBytes != null && appSettings.showSeekPreview)
-                            Align(
-                              alignment: Alignment((frac * 2 - 1).clamp(-1.0, 1.0).toDouble(), 0),
-                              child: Transform.translate(
-                                offset: const Offset(0, -6),
-                                child: IgnorePointer(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.memory(_previewBytes!, width: 140, height: 80, fit: BoxFit.cover),
-                                  ),
-                                ),
-                              ),
-                            ),
                           Stack(
                             alignment: Alignment.center,
                             children: [
@@ -1609,6 +1641,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                                 data: SliderTheme.of(context).copyWith(
                                   overlayColor: Colors.white24,
                                   trackHeight: 2,
+                                  overlayShape: const RoundSliderOverlayShape(overlayRadius: sliderInset),
+                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                  trackShape: const RoundedRectSliderTrackShape(),
                                 ),
                                 child: Slider(
                                   value: frac,
@@ -1620,11 +1655,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                                   onChangeEnd: (v) async {
                                     _holdChrome(false);
                                     if (c == null) return;
-                                    await c.seekTo(Duration(milliseconds: (v * dur.inMilliseconds).round()), fast: true);
-                                    setState(() {
-                                      _scrub = null;
-                                      _previewBytes = null;
-                                    });
+                                    await _commitSeek(c, Duration(milliseconds: (v * dur.inMilliseconds).round()));
                                   },
                                 ),
                               ),
@@ -1632,6 +1663,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                               mark(abB, const Color(0xFFFF7043)),
                             ],
                           ),
+                          // Floating overlay: takes no space, so the bar and the time labels never move.
+                          if (_scrub != null && _previewBytes != null && appSettings.showSeekPreview)
+                            Positioned(
+                              left: previewLeft,
+                              bottom: 34,
+                              child: IgnorePointer(child: _previewImage()),
+                            ),
                         ],
                       );
                     }),
