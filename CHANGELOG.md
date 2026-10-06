@@ -7,6 +7,7 @@ Navigation bar:
 - Pages still keep their content clear of the bar; the snackbar no longer overlaps the navigation buttons
 
 About:
+- Quick-action tiles are all the same height and the GitHub mark is sized like the other icons
 - New layout: a row of quick actions (Changelog, GitHub, Releases, Issues) and an Author card with avatar, name, role, "Support my work", GitHub profile and (optional) mail buttons
 
 Equalizer:

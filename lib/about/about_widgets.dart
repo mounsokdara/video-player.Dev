@@ -147,7 +147,7 @@ class AboutGroup extends StatelessWidget {
 
 /// GitHub mark, tinted like any other icon (Material Icons has none).
 class GithubIcon extends StatelessWidget {
-  const GithubIcon({super.key, this.size = 24, this.color});
+  const GithubIcon({super.key, this.size = 26, this.color});
   final double size;
   final Color? color;
 
@@ -174,7 +174,9 @@ class AboutQuickActions extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     const big = Radius.circular(28), small = Radius.circular(4);
     final last = items.length - 1;
-    return Row(children: [
+    // Every tile is as tall as the tallest one, whatever icon it holds.
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (var i = 0; i < items.length; i++)
         Expanded(
           child: Padding(
@@ -194,10 +196,15 @@ class AboutQuickActions extends StatelessWidget {
                 onTap: items[i].onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 4),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    IconTheme(
-                      data: IconThemeData(size: 28, color: cs.onSurface),
-                      child: items[i].icon,
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    // Fixed 28 dp slot: the GitHub mark and the Material icons line up and weigh the same.
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: IconTheme(
+                        data: IconThemeData(size: 28, color: cs.onSurface),
+                        child: Center(child: items[i].icon),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(items[i].label,
@@ -210,7 +217,8 @@ class AboutQuickActions extends StatelessWidget {
             ),
           ),
         ),
-    ]);
+    ]),
+    );
   }
 }
 
