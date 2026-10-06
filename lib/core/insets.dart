@@ -25,6 +25,35 @@ class SystemBars {
   /// What the home tabs asked for, restored when the player closes.
   static Color? homeStrip;
 
+  /// Popup routes (dialogs, sheets, menus) currently open, bottom to top. The strip lives above
+  /// the Navigator, so it would stay undimmed under a barrier; it blends these barriers itself.
+  static final ValueNotifier<List<PopupRoute<dynamic>>> popups = ValueNotifier<List<PopupRoute<dynamic>>>(const []);
+
+  static void _popupOpened(PopupRoute<dynamic> r) {
+    if (popups.value.contains(r)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!popups.value.contains(r)) popups.value = [...popups.value, r];
+    });
+  }
+
+  static void _popupClosed(PopupRoute<dynamic> r) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (popups.value.contains(r)) popups.value = popups.value.where((e) => e != r).toList();
+    });
+  }
+
+  /// [base] with every open popup's barrier painted over it (fading with the route's animation).
+  static Color dimmed(Color base) {
+    var c = base;
+    for (final r in popups.value) {
+      final b = r.barrierColor;
+      if (b == null) continue;
+      final t = r.animation?.value ?? 1.0;
+      c = Color.alphaBlend(b.withValues(alpha: b.a * t.clamp(0.0, 1.0)), c);
+    }
+    return c;
+  }
+
   static void setStrip(Color? c) {
     if (stripColor.value == c) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => stripColor.value = c);
@@ -55,14 +84,13 @@ class SystemBars {
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      // Only without contrast (the player): a fully transparent bar. Everywhere else the color is
-      // left to the system.
-      systemNavigationBarColor: contrast ? null : Colors.transparent,
-      systemNavigationBarDividerColor: contrast ? null : Colors.transparent,
+      // Always transparent: the solid color is painted by [SolidNavBarStrip], never by the system.
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
       statusBarIconBrightness: status,
       statusBarBrightness: bar,
       systemNavigationBarIconBrightness: status,
-      systemNavigationBarContrastEnforced: contrast,
+      systemNavigationBarContrastEnforced: false,
       systemStatusBarContrastEnforced: false,
     );
   }
@@ -130,19 +158,30 @@ class SolidNavBarStrip extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(child: child),
+        // Outer: which popups are open. Inner: their barrier fade animations, so the strip dims
+        // and un-dims in step with the page.
         ListenableBuilder(
-          listenable: Listenable.merge([SystemBars.solidNav, SystemBars.stripColor]),
+          listenable: Listenable.merge([SystemBars.solidNav, SystemBars.stripColor, SystemBars.popups]),
           builder: (context, _) {
-            final h = SystemBars.rawOf(context).bottom;
-            final side = MediaQuery.orientationOf(context) == Orientation.landscape;
-            if (!SystemBars.solidNav.value || h <= 0 || side) return const SizedBox.shrink();
-            final color = SystemBars.stripColor.value ?? Theme.of(context).colorScheme.surface;
-            return Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: h,
-              child: IgnorePointer(child: ColoredBox(color: color)),
+            final animations = <Listenable>[
+              for (final r in SystemBars.popups.value)
+                if (r.animation != null) r.animation!,
+            ];
+            return ListenableBuilder(
+              listenable: Listenable.merge(animations),
+              builder: (context, _) {
+                final h = SystemBars.rawOf(context).bottom;
+                final side = MediaQuery.orientationOf(context) == Orientation.landscape;
+                if (!SystemBars.solidNav.value || h <= 0 || side) return const SizedBox.shrink();
+                final base = SystemBars.stripColor.value ?? Theme.of(context).colorScheme.surface;
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: h,
+                  child: IgnorePointer(child: ColoredBox(color: SystemBars.dimmed(base))),
+                );
+              },
             );
           },
         ),
@@ -178,22 +217,37 @@ class SystemBarSafeZone extends StatelessWidget {
 class SystemBarObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (route is PopupRoute) SystemBars.onPopup(true);
+    if (route is PopupRoute) {
+      SystemBars._popupOpened(route);
+      SystemBars.onPopup(true);
+    }
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (route is PopupRoute) SystemBars.onPopup(false);
+    if (route is PopupRoute) {
+      SystemBars._popupClosed(route);
+      SystemBars.onPopup(false);
+    }
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (route is PopupRoute) SystemBars.onPopup(false);
+    if (route is PopupRoute) {
+      SystemBars._popupClosed(route);
+      SystemBars.onPopup(false);
+    }
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    if (oldRoute is PopupRoute) SystemBars.onPopup(false);
-    if (newRoute is PopupRoute) SystemBars.onPopup(true);
+    if (oldRoute is PopupRoute) {
+      SystemBars._popupClosed(oldRoute);
+      SystemBars.onPopup(false);
+    }
+    if (newRoute is PopupRoute) {
+      SystemBars._popupOpened(newRoute);
+      SystemBars.onPopup(true);
+    }
   }
 }

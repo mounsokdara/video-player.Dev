@@ -3,6 +3,8 @@
 ## Unreleased (dev)
 
 Navigation bar:
+- Fix: the system navigation bar is now always transparent with no system scrim or default color (native window, themes and Flutter overlay), so the only thing you see behind the buttons is the app's solid strip: no gray tint on the home screen, same look on every screen and Android version, no white flash when another activity opens
+- Fix: the strip now dims together with dialogs and sheets (it blends the open popup's barrier color) instead of staying bright under them
 - Player: the navigation bar is solid in the watch layout (not full screen) and transparent only in full screen; the home tabs' strip now continues the bottom navigation bar color instead of the page surface
 - Fix: outside the player the navigation bar is solid again (app surface color). On Android 15+ the system ignores `navigationBarColor`, so a solid strip is painted behind the bar; the player still keeps it fully transparent
 - In the player (full screen, sheets and dialogs included) the navigation bar is fully transparent, no scrim; leaving the player returns to the system default

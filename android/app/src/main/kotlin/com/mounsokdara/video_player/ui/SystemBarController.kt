@@ -36,6 +36,9 @@ class SystemBarController(private val activity: Activity) {
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             window.statusBarColor = Color.TRANSPARENT
+            // Always transparent with no system scrim: the solid color behind the bar is painted
+            // by the app (SolidNavBarStrip), so every screen and every Android version looks the same.
+            window.navigationBarColor = Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= 29) {
                 window.isNavigationBarContrastEnforced = false
                 window.isStatusBarContrastEnforced = false
@@ -114,15 +117,13 @@ class SystemBarController(private val activity: Activity) {
     }
 
     @Suppress("DEPRECATION")
+    @Suppress("UNUSED_PARAMETER")
     private fun showBars(window: Window, lightIcons: Boolean, contrast: Boolean) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.TRANSPARENT
-        // No contrast = the player: fully transparent navigation bar. Otherwise the system default.
-        if (!contrast) {
-            window.navigationBarColor = Color.TRANSPARENT
-        } else {
-            defaultNavColor?.let { window.navigationBarColor = it }
-        }
+        // Always fully transparent. A solid bar is the app's SolidNavBarStrip; letting the system
+        // draw its default color / contrast scrim here is what tinted the strip gray.
+        window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
             val controller = window.insetsController ?: window.decorView.windowInsetsController
@@ -137,7 +138,7 @@ class SystemBarController(private val activity: Activity) {
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
             )
         if (Build.VERSION.SDK_INT >= 29) {
-            window.isNavigationBarContrastEnforced = contrast
+            window.isNavigationBarContrastEnforced = false
             window.isStatusBarContrastEnforced = false
         }
     }
