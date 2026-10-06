@@ -64,7 +64,34 @@ class _AboutPageState extends State<AboutPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const _Hero(),
                   const SizedBox(height: 12),
-                  const _CreatorCard(),
+                  AboutQuickActions(items: [
+                    QuickAction(
+                      icon: const Icon(Icons.history),
+                      label: 'Changelog',
+                      onTap: () => openExternal(AboutInfo.changelogUrl),
+                    ),
+                    QuickAction(
+                      icon: const GithubIcon(),
+                      label: 'GitHub',
+                      onTap: () => openExternal(AboutInfo.repoUrl),
+                    ),
+                    QuickAction(
+                      icon: const Icon(Icons.new_releases_outlined),
+                      label: 'Releases',
+                      onTap: () => openExternal(AboutInfo.releasesUrl),
+                    ),
+                    QuickAction(
+                      icon: const Icon(Icons.bug_report_outlined),
+                      label: 'Issues',
+                      onTap: () => openExternal(AboutInfo.issuesUrl),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, bottom: 8),
+                    child: Text('Author', style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  const _AuthorCard(),
                   const SizedBox(height: 12),
                   AboutGroup(items: [
                     AboutItem(
@@ -73,25 +100,6 @@ class _AboutPageState extends State<AboutPage> {
                       subtitle: AboutInfo.displayVersion,
                       onTap: _onVersionTap,
                       chevron: false,
-                    ),
-                    AboutItem(
-                      icon: Icons.code,
-                      title: 'Source on GitHub',
-                      subtitle: 'github.com/mounsokdara/video-player',
-                      link: true,
-                      onTap: () => openExternal(AboutInfo.repoUrl),
-                    ),
-                    AboutItem(
-                      icon: Icons.new_releases_outlined,
-                      title: 'Releases',
-                      subtitle: 'Download the latest APK',
-                      onTap: () => openExternal(AboutInfo.releasesUrl),
-                    ),
-                    AboutItem(
-                      icon: Icons.bug_report_outlined,
-                      title: 'Report an issue',
-                      subtitle: 'Open a GitHub issue',
-                      onTap: () => openExternal(AboutInfo.issuesUrl),
                     ),
                     AboutItem(
                       icon: Icons.description_outlined,
@@ -143,30 +151,31 @@ class _Hero extends StatelessWidget {
   }
 }
 
-class _CreatorCard extends StatefulWidget {
-  const _CreatorCard();
+class _AuthorCard extends StatefulWidget {
+  const _AuthorCard();
 
   @override
-  State<_CreatorCard> createState() => _CreatorCardState();
+  State<_AuthorCard> createState() => _AuthorCardState();
 }
 
-class _CreatorCardState extends State<_CreatorCard> {
+class _AuthorCardState extends State<_AuthorCard> {
+  static const _avatarSize = 112.0;
   late final Future<GithubProfile?> _profile = GithubProfile.load(AboutInfo.githubLogin);
 
   Widget _avatar(ColorScheme cs, String? url, String letter) {
     Widget fallback() => Container(
-          width: 56,
-          height: 56,
+          width: _avatarSize,
+          height: _avatarSize,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
-          child: Text(letter, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: cs.onPrimary)),
+          child: Text(letter, style: TextStyle(fontSize: 44, fontWeight: FontWeight.w800, color: cs.onPrimary)),
         );
     if (url == null) return fallback();
     return ClipOval(
       child: Image.network(
         url,
-        width: 56,
-        height: 56,
+        width: _avatarSize,
+        height: _avatarSize,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => fallback(),
         loadingBuilder: (_, child, p) => p == null ? child : fallback(),
@@ -177,41 +186,63 @@ class _CreatorCardState extends State<_CreatorCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return AboutSection(
-      icon: Icons.person_outline,
-      title: 'Created by',
-      subtitle: 'Live from GitHub',
-      child: FutureBuilder<GithubProfile?>(
-        future: _profile,
-        builder: (context, snap) {
-          final p = snap.data;
-          final name = p?.name ?? AboutInfo.author;
-          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              _avatar(cs, p?.avatarUrl, name[0].toUpperCase()),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  Text('@${p?.login ?? AboutInfo.githubLogin}',
-                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+    final text = Theme.of(context).textTheme;
+    return Material(
+      color: cs.surfaceContainer,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+        child: SizedBox(
+          width: double.infinity,
+          child: FutureBuilder<GithubProfile?>(
+            future: _profile,
+            builder: (context, snap) {
+              final p = snap.data;
+              final name = p?.name ?? AboutInfo.author;
+              return Column(children: [
+                _avatar(cs, p?.avatarUrl, name[0].toUpperCase()),
+                const SizedBox(height: 16),
+                Text(name,
+                    textAlign: TextAlign.center,
+                    style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(AboutInfo.authorRole,
+                    textAlign: TextAlign.center,
+                    style: text.titleMedium?.copyWith(fontWeight: FontWeight.w400)),
+                const SizedBox(height: 20),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Flexible(
+                    child: FilledButton.icon(
+                      onPressed: () => openExternal(AboutInfo.supportUrl),
+                      icon: const Icon(Icons.volunteer_activism_outlined),
+                      label: const Text('Support my work'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 52),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        shape: const StadiumBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    tooltip: 'GitHub profile',
+                    iconSize: 28,
+                    onPressed: () => openExternal(AboutInfo.profileUrl),
+                    icon: const GithubIcon(size: 28),
+                  ),
+                  if (AboutInfo.contactEmail.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Email',
+                      iconSize: 28,
+                      onPressed: () => openExternal('mailto:${AboutInfo.contactEmail}'),
+                      icon: const Icon(Icons.mail_outline),
+                    ),
                 ]),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => openExternal(AboutInfo.profileUrl),
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: const Text('GitHub'),
-              ),
-            ]),
-            if (p?.bio != null) ...[
-              const SizedBox(height: 14),
-              Text(p!.bio!, style: TextStyle(fontSize: 14, height: 1.4, color: cs.onSurfaceVariant)),
-            ] else if (snap.connectionState != ConnectionState.done) ...[
-              const SizedBox(height: 14),
-              const LinearProgressIndicator(),
-            ],
-          ]);
-        },
+              ]);
+            },
+          ),
+        ),
       ),
     );
   }

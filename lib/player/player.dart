@@ -301,7 +301,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     SystemBars.alwaysHide = appSettings.alwaysHideNavBar;
     final sheetOpen = SystemBars.popupCount > 0;
     final hide = !sheetOpen && !_watch && (appSettings.alwaysHideNavBar || !showUi);
-    SystemBars.apply(icons: Brightness.light, contrast: false, hide: hide);
+    SystemBars.apply(icons: Brightness.light, contrast: true, hide: hide);
   }
 
   void _setYtMax(bool max) {
@@ -743,7 +743,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     AndroidBridge.setPipEnabled(false);
     AndroidBridge.setOrientation('none');
     SystemBars.alwaysHide = false;
-    SystemBars.apply(icons: Brightness.light, contrast: false, hide: false);
+    SystemBars.apply(icons: Brightness.light, contrast: true, hide: false);
     super.dispose();
   }
 

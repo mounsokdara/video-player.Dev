@@ -145,6 +145,75 @@ class AboutGroup extends StatelessWidget {
   }
 }
 
+/// GitHub mark, tinted like any other icon (Material Icons has none).
+class GithubIcon extends StatelessWidget {
+  const GithubIcon({super.key, this.size = 24, this.color});
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) =>
+      ImageIcon(const AssetImage('assets/github.png'), size: size, color: color);
+}
+
+class QuickAction {
+  const QuickAction({required this.icon, required this.label, required this.onTap});
+  final Widget icon;
+  final String label;
+  final VoidCallback onTap;
+}
+
+/// One row of equal tiles: big outer corners on the first / last tile, small inner corners and a
+/// thin gap between tiles. Icon above, label below.
+class AboutQuickActions extends StatelessWidget {
+  const AboutQuickActions({super.key, required this.items});
+  final List<QuickAction> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const big = Radius.circular(28), small = Radius.circular(4);
+    final last = items.length - 1;
+    return Row(children: [
+      for (var i = 0; i < items.length; i++)
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(left: i == 0 ? 0 : 2),
+            child: Material(
+              color: cs.surfaceContainer,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: i == 0 ? big : small,
+                  bottomLeft: i == 0 ? big : small,
+                  topRight: i == last ? big : small,
+                  bottomRight: i == last ? big : small,
+                ),
+              ),
+              child: InkWell(
+                onTap: items[i].onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 4),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    IconTheme(
+                      data: IconThemeData(size: 28, color: cs.onSurface),
+                      child: items[i].icon,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(items[i].label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14, color: cs.onSurface)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ]);
+  }
+}
+
 /// Back arrow for a page that runs as its own activity (nothing to pop): closes the activity.
 /// Returns null (default back arrow) when the page was pushed inside the app.
 Widget? standaloneBack(BuildContext context) =>

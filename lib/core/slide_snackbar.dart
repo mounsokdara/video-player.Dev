@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'package:video_player_app/core/insets.dart';
+
 class SnackColors {
   const SnackColors(this.container, this.content, this.action);
 
@@ -351,7 +353,7 @@ class _SlideSnackBarState extends State<_SlideSnackBar>
       ),
     );
 
-    final double safeBottom = (MediaQuery.of(context).padding.bottom - widget.insets.bottom)
+    final double safeBottom = (SystemBars.bottomInset(context) - widget.insets.bottom)
         .clamp(0.0, double.infinity)
         .toDouble();
 

@@ -703,7 +703,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final onTop = ModalRoute.of(context)?.isCurrent ?? true;
     if (onTop) {
       SystemBars.alwaysHide = false;
-      SystemBars.apply(icons: dark ? Brightness.light : Brightness.dark, contrast: false, hide: false);
+      SystemBars.apply(icons: dark ? Brightness.light : Brightness.dark, contrast: true, hide: false);
     }
 
     Widget shell(Widget child) {

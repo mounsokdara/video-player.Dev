@@ -28,7 +28,6 @@ class SystemBarController(private val activity: Activity) {
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             window.statusBarColor = Color.TRANSPARENT
-            window.navigationBarColor = Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= 29) {
                 window.isNavigationBarContrastEnforced = false
                 window.isStatusBarContrastEnforced = false
@@ -87,7 +86,6 @@ class SystemBarController(private val activity: Activity) {
             window.isStatusBarContrastEnforced = false
         }
         window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
             val controller = window.insetsController ?: window.decorView.windowInsetsController
@@ -110,7 +108,6 @@ class SystemBarController(private val activity: Activity) {
     private fun showBars(window: Window, lightIcons: Boolean, contrast: Boolean) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
             val controller = window.insetsController ?: window.decorView.windowInsetsController

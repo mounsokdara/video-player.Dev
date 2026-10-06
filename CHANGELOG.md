@@ -2,6 +2,13 @@
 
 ## Unreleased (dev)
 
+Navigation bar:
+- No hardcoded navigation bar color any more: the app no longer forces it transparent (themes, native window setup, Flutter overlay style) and no longer paints its own solid strip over it; the system default is used, with the system contrast scrim
+- Pages still keep their content clear of the bar; the snackbar no longer overlaps the navigation buttons
+
+About:
+- New layout: a row of quick actions (Changelog, GitHub, Releases, Issues) and an Author card with avatar, name, role, "Support my work", GitHub profile and (optional) mail buttons
+
 Equalizer:
 - Large screens (720 dp and wider): two-pane layout with taller band sliders and a dB ruler on the left, presets and bass / surround in side cards, centred with a maximum width
 - Each band shows its current dB value; phones keep the single column (capped width on tall tablets)

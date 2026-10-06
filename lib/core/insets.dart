@@ -24,13 +24,11 @@ class SystemBars {
     return raw > mq ? raw : mq;
   }
 
-  static SystemUiOverlayStyle overlay({required Brightness icons, bool contrast = false}) {
+  static SystemUiOverlayStyle overlay({required Brightness icons, bool contrast = true}) {
     final status = icons;
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarDividerColor: Colors.transparent,
       statusBarIconBrightness: status,
       statusBarBrightness: bar,
       systemNavigationBarIconBrightness: status,
@@ -39,7 +37,7 @@ class SystemBars {
     );
   }
 
-  static void apply({required Brightness icons, bool contrast = false, bool forceShow = false, bool? hide}) {
+  static void apply({required Brightness icons, bool contrast = true, bool forceShow = false, bool? hide}) {
     iconBrightness = icons;
     final shouldHide = hide ?? (alwaysHide && popupCount <= 0 && !forceShow);
     _ensureUiCallback();
@@ -62,7 +60,7 @@ class SystemBars {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         unawaited(AndroidBridge.applySystemBars(
           lightIcons: iconBrightness == Brightness.light,
-          contrast: false,
+          contrast: true,
           hide: true,
         ));
       }
@@ -89,46 +87,26 @@ class SystemBars {
   }
 }
 
-/// Keeps a page clear of the system navigation bar and display cutouts and makes those areas solid.
+/// Keeps a page clear of the left / right system bars (navigation bar in landscape, cutouts).
 ///
-/// The app draws edge to edge, so the (transparent) navigation bar sits on top of the page. In
-/// landscape it is on the left or right, where an explicit list padding does not add an inset, and
-/// content scrolls underneath it. This widget:
-///  - pads [child] by the left / right system insets (and removes them from the [MediaQuery] it
-///    gives [child], so nested zones never pad twice), and
-///  - paints solid [color] (default: the theme surface) over the left, right and bottom bar areas,
-///    so content never shows through the bar. The bottom strip is skipped while the keyboard is up.
-///
-/// The bottom inset is deliberately not padded here: pages already add it to their list padding.
+/// It only pads [child] by those insets (and removes them from the [MediaQuery] it gives [child],
+/// so nested zones never pad twice). The bar itself is left to the system: nothing is painted over
+/// it. The bottom inset is not padded here, pages add it to their own list padding.
 class SystemBarSafeZone extends StatelessWidget {
-  const SystemBarSafeZone({super.key, required this.child, this.color});
+  const SystemBarSafeZone({super.key, required this.child});
   final Widget child;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final pad = MediaQuery.viewPaddingOf(context);
-    final fill = color ?? Theme.of(context).colorScheme.surface;
-    final keyboard = MediaQueryData.fromView(View.of(context)).viewInsets.bottom > 0;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(left: pad.left, right: pad.right),
-          child: MediaQuery.removeViewPadding(
-            context: context,
-            removeLeft: true,
-            removeRight: true,
-            child: child,
-          ),
-        ),
-        if (pad.left > 0)
-          Positioned(left: 0, top: 0, bottom: 0, width: pad.left, child: IgnorePointer(child: ColoredBox(color: fill))),
-        if (pad.right > 0)
-          Positioned(right: 0, top: 0, bottom: 0, width: pad.right, child: IgnorePointer(child: ColoredBox(color: fill))),
-        if (pad.bottom > 0 && !keyboard)
-          Positioned(left: 0, right: 0, bottom: 0, height: pad.bottom, child: IgnorePointer(child: ColoredBox(color: fill))),
-      ],
+    return Padding(
+      padding: EdgeInsets.only(left: pad.left, right: pad.right),
+      child: MediaQuery.removeViewPadding(
+        context: context,
+        removeLeft: true,
+        removeRight: true,
+        child: child,
+      ),
     );
   }
 }
