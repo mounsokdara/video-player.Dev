@@ -63,6 +63,14 @@ class AppNative(
                 result.success(true)
                 return true
             }
+            NativeConstants.Method.READ_DEBUG_LOG -> {
+                result.success(DeveloperLog.read(activity))
+                return true
+            }
+            NativeConstants.Method.PEEK_CRASH -> {
+                result.success(NativeCrashLog.peek(activity))
+                return true
+            }
             else -> return false
         }
     }
