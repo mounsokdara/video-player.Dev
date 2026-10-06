@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/core/developer_log.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
@@ -52,6 +53,7 @@ class _ConsolePageState extends State<ConsolePage> {
     final bottom = MediaQuery.viewPaddingOf(context).bottom;
     return Scaffold(
       appBar: AppBar(
+        leading: standaloneBack(context),
         title: const Text('Console'),
         actions: [
           IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: _refresh),

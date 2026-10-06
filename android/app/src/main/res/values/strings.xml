@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Video Player</string>
     <string name="settings_title">Settings</string>
+    <string name="licenses_title">Open source licenses</string>
+    <string name="console_title">Console</string>
     <string name="playback_channel">Playback</string>
     <string name="playback_channel_desc">Now playing controls</string>
 </resources>

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:video_player_app/about/console_page.dart';
+import 'package:video_player_app/about/licenses_page.dart';
 import 'package:video_player_app/core/crash.dart';
 import 'package:video_player_app/library/home.dart';
 import 'package:video_player_app/library/picker.dart';
@@ -125,6 +127,22 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 ),
               ];
             }
+            if (name == '/licenses' || name.endsWith('/licenses')) {
+              return [
+                MaterialPageRoute<void>(
+                  settings: const RouteSettings(name: '/licenses'),
+                  builder: (_) => const LicensesPage(),
+                ),
+              ];
+            }
+            if (name == '/console' || name.endsWith('/console')) {
+              return [
+                MaterialPageRoute<void>(
+                  settings: const RouteSettings(name: '/console'),
+                  builder: (_) => const ConsolePage(),
+                ),
+              ];
+            }
             if (name == '/settings' || name.endsWith('/settings')) {
               return [
                 MaterialPageRoute<void>(
@@ -151,6 +169,12 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
                 settings: settings,
                 builder: (_) => const VideoPickerPage(),
               );
+            }
+            if (settings.name == '/licenses') {
+              return MaterialPageRoute<void>(settings: settings, builder: (_) => const LicensesPage());
+            }
+            if (settings.name == '/console') {
+              return MaterialPageRoute<void>(settings: settings, builder: (_) => const ConsolePage());
             }
             if (settings.name == '/settings') {
               return MaterialPageRoute<void>(

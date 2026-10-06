@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show LicenseRegistry;
 import 'package:flutter/material.dart';
 
 import 'package:video_player_app/about/about_info.dart';
+import 'package:video_player_app/about/about_widgets.dart';
 
 class _Pkg {
   _Pkg(this.name);
@@ -43,7 +44,7 @@ class _LicensesPageState extends State<LicensesPage> {
     final bottom = MediaQuery.viewPaddingOf(context).bottom;
     return Scaffold(
       body: CustomScrollView(slivers: [
-        const SliverAppBar(pinned: true, title: Text('Open source licenses')),
+        SliverAppBar(pinned: true, leading: standaloneBack(context), title: const Text('Open source licenses')),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),

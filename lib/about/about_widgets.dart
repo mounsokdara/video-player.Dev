@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 Future<void> openExternal(String url) async {
@@ -135,3 +136,8 @@ class AboutGroup extends StatelessWidget {
     ]);
   }
 }
+
+/// Back arrow for a page that runs as its own activity (nothing to pop): closes the activity.
+/// Returns null (default back arrow) when the page was pushed inside the app.
+Widget? standaloneBack(BuildContext context) =>
+    Navigator.canPop(context) ? null : BackButton(onPressed: SystemNavigator.pop);
