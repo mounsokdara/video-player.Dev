@@ -7,6 +7,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Single source of truth for the app version: <repo root>/version.txt, format "versionName+versionCode"
+// (example: 1.0.2.1+5). Edit that one file to release a new version.
+val versionParts = rootProject.projectDir.parentFile.resolve("version.txt").readText().trim().split("+")
+require(versionParts.size == 2) { "version.txt must look like 1.0.2.1+5" }
+val appVersionName = versionParts[0].trim()
+val appVersionCode = versionParts[1].trim().toInt()
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -27,8 +34,8 @@ android {
         applicationId = "com.mounsokdara.video_player"
         minSdk = 24
         targetSdk = 36
-        versionCode = flutter.versionCode
-        versionName = "1.0.2.1"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     signingConfigs {
@@ -46,6 +53,12 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+    }
+
+    // F-Droid: do not embed the Google "Dependency metadata" signing block in the APK
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     buildTypes {
@@ -69,6 +82,12 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// F-Droid: Flutter's embedding pulls in Google Play Core (only used for Play Store
+// deferred components, which this app does not use). Exclude it so no proprietary classes ship.
+configurations.configureEach {
+    exclude(group = "com.google.android.play")
 }
 
 dependencies {

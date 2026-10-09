@@ -4,7 +4,8 @@ class AboutInfo {
 
   static const name = 'Video Player';
   static const author = 'Moun Sokdara';
-  static const displayVersion = '1.0.2.1';
+  /// Comes from version.txt: every build passes --dart-define=APP_VERSION=<versionName>.
+  static const displayVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.0.0');
   static const tagline = 'Local-only Material 3 player. Your videos never leave the device.';
 
   static const githubLogin = 'mounsokdara';
