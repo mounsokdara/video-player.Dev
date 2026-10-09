@@ -37,8 +37,10 @@ object ModelStore {
     @Volatile private var lastNotify = 0L
     private var nativeLoaded = false
 
-    fun abi(): String =
-        Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "armeabi-v7a" || it == "x86_64" } ?: ""
+    fun abi(): String {
+        val wanted = if (android.os.Process.is64Bit()) listOf("arm64-v8a", "x86_64") else listOf("armeabi-v7a")
+        return Build.SUPPORTED_ABIS.firstOrNull { it in wanted } ?: ""
+    }
 
     fun items(): List<Item> = listOf(
         runtime(),

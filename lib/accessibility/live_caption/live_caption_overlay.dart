@@ -32,6 +32,8 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
   final List<_Cue> _cues = [];
   StreamSubscription<Map<String, dynamic>>? _sub;
   String _state = '';
+  String _message = '';
+  Timer? _debounce;
   String _text = '';
   int _lastPos = 0;
   int _lastSent = 0;
@@ -42,7 +44,7 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
     super.initState();
     _sub = AndroidBridge.captionEvents().listen(_onEvent);
     widget.position.addListener(_onPosition);
-    _start(widget.position.value);
+    _requestStart(delayMs: 600);
   }
 
   @override
@@ -55,16 +57,26 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
     if (old.path != widget.path) {
       _cues.clear();
       _text = '';
-      _start(widget.position.value);
+      _requestStart(delayMs: 600);
     }
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     widget.position.removeListener(_onPosition);
     _sub?.cancel();
     unawaited(AndroidBridge.liveCaptionStop(release: true));
     super.dispose();
+  }
+
+  /// Starts (or restarts) the engine at the playhead once the position has settled, so a burst of
+  /// position changes never restarts the engine over and over.
+  void _requestStart({int delayMs = 400}) {
+    _debounce?.cancel();
+    _debounce = Timer(Duration(milliseconds: delayMs), () {
+      if (mounted) _start(widget.position.value);
+    });
   }
 
   void _start(int ms) {
@@ -92,7 +104,10 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
           _toastedError = true;
           unawaited(AndroidBridge.toast('Live Caption: ${e['message'] ?? 'error'}'));
         }
-        setState(() => _state = st);
+        setState(() {
+          _state = st;
+          _message = '${e['message'] ?? ''}';
+        });
     }
   }
 
@@ -101,8 +116,8 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
     final jump = ms - _lastPos;
     _lastPos = ms;
     if (jump.abs() > 2500) {
-      // Seek: restart the engine from the new position.
-      _start(ms);
+      // Seek: restart the engine from the new position (after the position settles).
+      _requestStart();
     } else if ((ms - _lastSent).abs() > 1500) {
       _lastSent = ms;
       unawaited(AndroidBridge.liveCaptionPlayhead(ms));
@@ -130,7 +145,9 @@ class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
       if (_state == 'needs_model') {
         hint = 'Live Caption: download an AI model (Settings > Accessibility > Live Caption)';
       } else if (_state == 'loading') {
-        hint = 'Live Caption: loading AI model...';
+        hint = 'Live Caption: ${_message.isEmpty ? 'loading...' : _message}';
+      } else if (_state == 'error') {
+        hint = 'Live Caption error: $_message';
       }
     }
     final shown = _text.isNotEmpty ? _text : hint;

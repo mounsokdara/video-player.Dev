@@ -41,11 +41,15 @@ class AndroidBridge {
 
   /// Live caption cues and status pushed by the native engine (`type`: `cue` or `status`).
   static Stream<Map<String, dynamic>> captionEvents() {
-    _captionEvents ??= _capEv
-        .receiveBroadcastStream()
-        .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{'type': '$e'})
-        .handleError((_) {})
-        .asBroadcastStream();
+    if (_captionEvents == null) {
+      final raw = _capEv
+          .receiveBroadcastStream()
+          .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{'type': '$e'})
+          .handleError((_) {});
+      // Keep the native subscription open even while no overlay is listening.
+      _captionEvents = raw.asBroadcastStream(onCancel: (_) {});
+      _captionEvents!.listen((_) {});
+    }
     return _captionEvents!;
   }
 

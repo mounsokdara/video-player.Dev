@@ -5,6 +5,9 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import com.mounsokdara.video_player.log.DeveloperLog
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -26,9 +29,12 @@ object LiveCaptionEngine {
     private const val AHEAD_MS = 90_000L
     private val gen = AtomicInteger()
     @Volatile private var playheadMs = 0L
-    private val lock = Any()
-    private var rec: OfflineRecognizer? = null
-    private var recKey = ""
+    // createLock guards building/replacing the recognizer; decodeLock guards using/releasing it.
+    private val createLock = Any()
+    private val decodeLock = Any()
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var rec: OfflineRecognizer? = null
+    @Volatile private var recKey = ""
 
     fun start(ctx: Context, path: String, startMs: Long) {
         val g = gen.incrementAndGet()
@@ -42,15 +48,22 @@ object LiveCaptionEngine {
     }
 
     fun stop(release: Boolean) {
-        gen.incrementAndGet()
+        val g = gen.incrementAndGet()
         if (release) {
-            Thread {
-                synchronized(lock) {
-                    try { rec?.release() } catch (_: Throwable) {}
-                    rec = null
-                    recKey = ""
+            // Keep the model for a while: re-entering the player or seeking must not reload it.
+            main.postDelayed({
+                if (gen.get() == g) {
+                    Thread {
+                        synchronized(createLock) {
+                            synchronized(decodeLock) {
+                                try { rec?.release() } catch (_: Throwable) {}
+                                rec = null
+                                recKey = ""
+                            }
+                        }
+                    }.start()
                 }
-            }.start()
+            }, 20_000)
         }
     }
 
@@ -61,14 +74,28 @@ object LiveCaptionEngine {
         return mapOf("ready" to (runtime && usable != null), "runtime" to runtime, "model" to (usable ?: ""))
     }
 
-    private fun emitStatus(state: String, msg: String = "") =
+    private fun emitStatus(ctx: Context, state: String, msg: String = "") {
+        try { DeveloperLog.append(ctx, "LiveCaption: $state $msg") } catch (_: Throwable) {}
         CaptionHub.emit(mapOf("type" to "status", "state" to state, "message" to msg))
+    }
 
     private fun recognizerFor(ctx: Context, modelId: String, lang: String): OfflineRecognizer {
         val key = "$modelId|$lang"
-        if (rec != null && recKey == key) return rec!!
-        try { rec?.release() } catch (_: Throwable) {}
-        rec = null
+        val cur = rec
+        if (cur != null && recKey == key) return cur
+        synchronized(createLock) {
+            val again = rec
+            if (again != null && recKey == key) return again
+            synchronized(decodeLock) {
+                try { rec?.release() } catch (_: Throwable) {}
+                rec = null
+                recKey = ""
+            }
+            return buildRecognizer(ctx, modelId, lang, key)
+        }
+    }
+
+    private fun buildRecognizer(ctx: Context, modelId: String, lang: String, key: String): OfflineRecognizer {
         val dir = ModelStore.modelDir(ctx, modelId)
         val r = OfflineRecognizer(
             config = OfflineRecognizerConfig(
@@ -100,20 +127,23 @@ object LiveCaptionEngine {
         var vad: Vad? = null
         try {
             if (!ModelStore.isReady(ctx, ModelStore.RUNTIME)) {
-                emitStatus("needs_model", "Download the speech engine and an AI model first")
+                emitStatus(ctx, "needs_model", "Download the speech engine and an AI model first")
                 return
             }
             val chosen = LiveCaptionPrefs.model(ctx)
             val modelId = if (ModelStore.isReady(ctx, chosen)) chosen else ModelStore.installedModels(ctx).firstOrNull()?.id
             if (modelId == null) {
-                emitStatus("needs_model", "Download an AI model first")
+                emitStatus(ctx, "needs_model", "Download an AI model first")
                 return
             }
-            emitStatus("loading")
+            emitStatus(ctx, "loading", "Loading speech engine...")
             ModelStore.loadNative(ctx)
-            val lang = LiveCaptionPrefs.lang(ctx)
-            synchronized(lock) { recognizerFor(ctx, modelId, lang) }
             if (!alive()) return
+            val lang = LiveCaptionPrefs.lang(ctx)
+            emitStatus(ctx, "loading", "Loading AI model ($modelId)...")
+            recognizerFor(ctx, modelId, lang)
+            if (!alive()) return
+            emitStatus(ctx, "loading", "Opening audio...")
             val v = Vad(
                 config = VadModelConfig(
                     sileroVadModelConfig = SileroVadModelConfig(
@@ -146,7 +176,7 @@ object LiveCaptionEngine {
                 if (f.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) { track = i; fmt = f; break }
             }
             if (track < 0 || fmt == null) {
-                emitStatus("error", "This video has no audio track")
+                emitStatus(ctx, "error", "This video has no audio track")
                 return
             }
             ex.selectTrack(track)
@@ -157,7 +187,7 @@ object LiveCaptionEngine {
             codec = cd
             cd.configure(fmt, null, null, 0)
             cd.start()
-            emitStatus("running")
+            emitStatus(ctx, "running")
 
             var baseSec = -1.0
 
@@ -166,7 +196,7 @@ object LiveCaptionEngine {
                     val seg = v.front()
                     v.pop()
                     if (!alive()) continue
-                    val text = synchronized(lock) {
+                    val text = synchronized(decodeLock) {
                         val r = rec ?: return@synchronized ""
                         val s = r.createStream()
                         s.acceptWaveform(seg.samples, 16000)
@@ -251,10 +281,13 @@ object LiveCaptionEngine {
             if (alive()) {
                 v.flush()
                 drain()
-                emitStatus("done")
+                emitStatus(ctx, "done")
             }
         } catch (e: Throwable) {
-            if (alive()) emitStatus("error", e.message ?: e.javaClass.simpleName)
+            // Always report: a superseded run still tells why it failed (the log keeps the full story).
+            val msg = "${e.javaClass.simpleName}: ${e.message ?: ""}"
+            try { DeveloperLog.append(ctx, "LiveCaption: failed $msg") } catch (_: Throwable) {}
+            if (alive()) emitStatus(ctx, "error", msg)
         } finally {
             try { vad?.release() } catch (_: Throwable) {}
             try { codec?.stop() } catch (_: Throwable) {}
