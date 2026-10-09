@@ -1161,7 +1161,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
                 ),
               ),
             if (appSettings.liveCaption)
-              Positioned(
+              AnimatedPositioned(
+                // The key keeps the overlay (and its state) when other children come and go.
+                key: const ValueKey('live-caption-overlay'),
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
                 left: 24,
                 right: 24,
                 bottom: (showUi && !locked ? 124 : 36) + pad.bottom,

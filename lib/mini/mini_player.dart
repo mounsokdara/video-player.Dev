@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:video_player_app/accessibility/live_caption/live_caption_overlay.dart';
 import 'package:video_player_app/playback/engine.dart';
 
 import 'package:video_player_app/native/android_bridge.dart';
@@ -38,6 +39,9 @@ class MiniPlayerOverlay extends StatefulWidget {
 
 class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     with TickerProviderStateMixin {
+  Object? _capFor;
+  EnginePositionListenable? _capPos;
+
   final GlobalKey _cardKey = GlobalKey();
 
   late final AnimationController _anim;
@@ -559,6 +563,10 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
     final c = PlaybackSession.controller;
     final item = PlaybackSession.item;
+    if (!identical(_capFor, c)) {
+      _capFor = c;
+      _capPos = c == null ? null : EnginePositionListenable(c, () => c.value.position.inMilliseconds);
+    }
     var playing = false;
     var progress = 0.0;
     try {
@@ -634,6 +642,20 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
                                     color: const Color(0xFF05060A),
                                     child: frame,
                                   ),
+                                  if (appSettings.liveCaption && item != null && _capPos != null)
+                                    Positioned(
+                                      key: const ValueKey('mini-live-caption'),
+                                      left: 6,
+                                      right: 6,
+                                      bottom: 8,
+                                      child: IgnorePointer(
+                                        child: LiveCaptionOverlay(
+                                          path: item.path,
+                                          position: _capPos!,
+                                          compact: true,
+                                        ),
+                                      ),
+                                    ),
                                   Align(
                                     alignment: Alignment.bottomCenter,
                                     child: SizedBox(

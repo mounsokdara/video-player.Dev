@@ -1,175 +1,135 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:video_player_app/native/android_bridge.dart';
+import 'package:video_player_app/accessibility/live_caption/live_caption_controller.dart';
 
-class _Cue {
-  const _Cue(this.start, this.end, this.text);
-  final int start;
-  final int end;
-  final String text;
+/// Adapts any [Listenable] playback source (such as the playback engine) to the millisecond
+/// position the overlay needs.
+class EnginePositionListenable implements ValueListenable<int> {
+  EnginePositionListenable(this._source, this._read);
+  final Listenable _source;
+  final int Function() _read;
+
+  @override
+  int get value => _read();
+
+  @override
+  void addListener(VoidCallback listener) => _source.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) => _source.removeListener(listener);
 }
 
-/// Live caption text for the video being played. Asks the native engine to transcribe the file
-/// from the playhead, collects the returned cues and shows the one matching the position.
-/// Place it inside an IgnorePointer at the bottom of the video.
+/// Caption text plus extraction progress for the video being played. It only draws: the captions
+/// themselves live in [LiveCaptionController], so rebuilding or moving this widget never loses them.
+/// Put it inside an IgnorePointer at the bottom of the video.
 class LiveCaptionOverlay extends StatefulWidget {
-  const LiveCaptionOverlay({super.key, required this.path, required this.position});
+  const LiveCaptionOverlay({super.key, required this.path, required this.position, this.compact = false});
 
-  /// File being played.
   final String path;
 
   /// Playback position in milliseconds.
   final ValueListenable<int> position;
+
+  /// Smaller text for the mini player.
+  final bool compact;
 
   @override
   State<LiveCaptionOverlay> createState() => _LiveCaptionOverlayState();
 }
 
 class _LiveCaptionOverlayState extends State<LiveCaptionOverlay> {
-  final List<_Cue> _cues = [];
-  StreamSubscription<Map<String, dynamic>>? _sub;
-  String _state = '';
-  String _message = '';
-  Timer? _debounce;
-  String _text = '';
-  int _lastPos = 0;
-  int _lastSent = 0;
-  bool _toastedError = false;
+  final LiveCaptionController _ctl = LiveCaptionController.instance;
 
   @override
   void initState() {
     super.initState();
-    _sub = AndroidBridge.captionEvents().listen(_onEvent);
-    widget.position.addListener(_onPosition);
-    _requestStart(delayMs: 600);
+    _ctl.attach(this, widget.path, widget.position);
   }
 
   @override
   void didUpdateWidget(LiveCaptionOverlay old) {
     super.didUpdateWidget(old);
-    if (old.position != widget.position) {
-      old.position.removeListener(_onPosition);
-      widget.position.addListener(_onPosition);
-    }
-    if (old.path != widget.path) {
-      _cues.clear();
-      _text = '';
-      _requestStart(delayMs: 600);
+    if (old.path != widget.path || old.position != widget.position) {
+      _ctl.attach(this, widget.path, widget.position);
     }
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
-    widget.position.removeListener(_onPosition);
-    _sub?.cancel();
-    unawaited(AndroidBridge.liveCaptionStop(release: true));
+    _ctl.detach(this);
     super.dispose();
-  }
-
-  /// Starts (or restarts) the engine at the playhead once the position has settled, so a burst of
-  /// position changes never restarts the engine over and over.
-  void _requestStart({int delayMs = 400}) {
-    _debounce?.cancel();
-    _debounce = Timer(Duration(milliseconds: delayMs), () {
-      if (mounted) _start(widget.position.value);
-    });
-  }
-
-  void _start(int ms) {
-    _lastPos = ms;
-    _lastSent = ms;
-    _cues.removeWhere((c) => c.end >= ms - 500);
-    unawaited(AndroidBridge.liveCaptionStart(widget.path, ms));
-  }
-
-  void _onEvent(Map<String, dynamic> e) {
-    if (!mounted) return;
-    switch (e['type']) {
-      case 'cue':
-        final start = (e['startMs'] as num?)?.toInt() ?? 0;
-        final end = (e['endMs'] as num?)?.toInt() ?? start;
-        final text = '${e['text'] ?? ''}'.trim();
-        if (text.isEmpty) return;
-        if (_cues.any((c) => c.start == start && c.text == text)) return;
-        _cues.add(_Cue(start, end, text));
-        if (_cues.length > 3000) _cues.removeRange(0, 500);
-        _refreshText();
-      case 'status':
-        final st = '${e['state'] ?? ''}';
-        if (st == 'error' && !_toastedError) {
-          _toastedError = true;
-          unawaited(AndroidBridge.toast('Live Caption: ${e['message'] ?? 'error'}'));
-        }
-        setState(() {
-          _state = st;
-          _message = '${e['message'] ?? ''}';
-        });
-    }
-  }
-
-  void _onPosition() {
-    final ms = widget.position.value;
-    final jump = ms - _lastPos;
-    _lastPos = ms;
-    if (jump.abs() > 2500) {
-      // Seek: restart the engine from the new position (after the position settles).
-      _requestStart();
-    } else if ((ms - _lastSent).abs() > 1500) {
-      _lastSent = ms;
-      unawaited(AndroidBridge.liveCaptionPlayhead(ms));
-    }
-    _refreshText();
-  }
-
-  void _refreshText() {
-    final ms = widget.position.value;
-    String next = '';
-    for (var i = _cues.length - 1; i >= 0; i--) {
-      final c = _cues[i];
-      if (c.start <= ms && ms <= c.end + 300) {
-        next = c.text;
-        break;
-      }
-    }
-    if (next != _text && mounted) setState(() => _text = next);
   }
 
   @override
   Widget build(BuildContext context) {
-    String? hint;
-    if (_text.isEmpty) {
-      if (_state == 'needs_model') {
-        hint = 'Live Caption: download an AI model (Settings > Accessibility > Live Caption)';
-      } else if (_state == 'loading') {
-        hint = 'Live Caption: ${_message.isEmpty ? 'loading...' : _message}';
-      } else if (_state == 'error') {
-        hint = 'Live Caption error: $_message';
-      }
-    }
-    final shown = _text.isNotEmpty ? _text : hint;
-    if (shown == null) return const SizedBox.shrink();
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xB8000000),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          shown,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: _text.isNotEmpty ? 18 : 13,
-            height: 1.25,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
+    final compact = widget.compact;
+    return AnimatedBuilder(
+      animation: Listenable.merge([_ctl, widget.position]),
+      builder: (context, _) {
+        final text = _ctl.textAt(widget.position.value);
+        final chip = _ctl.chipText;
+        final p = _ctl.chipProgress;
+        if (text.isEmpty && chip == null) return const SizedBox.shrink();
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (chip != null)
+              Container(
+                margin: EdgeInsets.only(bottom: text.isEmpty ? 0 : 4),
+                padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 10, vertical: compact ? 2 : 4),
+                decoration: BoxDecoration(
+                  color: const Color(0x99000000),
+                  borderRadius: BorderRadius.circular(compact ? 6 : 10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      chip,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: compact ? 9 : 12),
+                    ),
+                    if (p != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: SizedBox(
+                          width: compact ? 70 : 140,
+                          height: 3,
+                          child: LinearProgressIndicator(
+                            value: p,
+                            minHeight: 3,
+                            backgroundColor: Colors.white24,
+                            color: const Color(0xFF9E8CFF),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            if (text.isNotEmpty)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 12, vertical: compact ? 2 : 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xB8000000),
+                  borderRadius: BorderRadius.circular(compact ? 6 : 8),
+                ),
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  maxLines: compact ? 2 : 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 11 : 18,
+                    height: 1.25,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
