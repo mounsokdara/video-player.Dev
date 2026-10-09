@@ -36,6 +36,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import com.mounsokdara.video_player.accessibility.livecaption.CaptionHub
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
@@ -142,6 +143,8 @@ open class MainActivity : FlutterActivity() {
                     eventSink = null
                 }
             })
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "app.videoplayer/captions")
+            .setStreamHandler(CaptionHub)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 try {

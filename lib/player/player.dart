@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:vibration/vibration.dart';
+import 'package:video_player_app/accessibility/live_caption/live_caption_overlay.dart';
 import 'package:video_player_app/playback/engine.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -1157,6 +1158,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
               IgnorePointer(
                 child: Center(
                   child: _HudChip(child: Text(overlay, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+                ),
+              ),
+            if (appSettings.liveCaption)
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: (showUi && !locked ? 124 : 36) + pad.bottom,
+                child: IgnorePointer(
+                  child: LiveCaptionOverlay(path: item.path, position: _posTick),
                 ),
               ),
             if (_scrub != null && _previewBytes != null && appSettings.showSeekPreview && !(showUi && !locked))

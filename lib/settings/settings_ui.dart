@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:video_player_app/accessibility/live_caption/live_caption_page.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_page.dart';
@@ -52,6 +53,8 @@ Widget? standaloneSettingsPage(String route, VoidCallback onChanged) {
       return SystemBarSafeZone(child: TitleBarEditor(onChanged: onChanged));
     case '/floating-buttons':
       return HudEditorPage(onChanged: onChanged);
+    case '/live-caption':
+      return _SettingsBack(onBack: SystemNavigator.pop, child: const LiveCaptionPage());
   }
   final i = _standaloneCategory[route];
   if (i == null) return null;
@@ -626,6 +629,21 @@ class _AccessSettingsState extends State<AccessSettings> {
       body: ListView(
         padding: EdgeInsets.only(bottom: insets.bottom + pad.bottom + 24),
         children: [
+          ListTile(
+            leading: const Icon(Icons.closed_caption_outlined),
+            title: const Text('Live Caption'),
+            subtitle: Text(s.liveCaption ? 'On' : 'Off'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final nav = Navigator.of(context);
+              final opened = await AndroidBridge.openRoute('/live-caption');
+              if (!opened) {
+                await nav.push(MaterialPageRoute<void>(builder: (_) => const LiveCaptionPage()));
+              }
+              if (mounted) setState(() {});
+            },
+          ),
+          const Divider(height: 1),
           _h('Display filters'),
           SwitchListTile(title: const Text('High contrast'), value: s.highContrast, onChanged: (v) => set(() => s.highContrast = v)),
           SwitchListTile(title: const Text('Grayscale'), value: s.grayscale, onChanged: (v) => set(() => s.grayscale = v)),

@@ -1,6 +1,10 @@
 package com.mounsokdara.video_player
 
 import android.content.Intent
+import android.provider.Settings
+import com.mounsokdara.video_player.accessibility.livecaption.LiveCaptionActivity
+import com.mounsokdara.video_player.accessibility.livecaption.LiveCaptionEngine
+import com.mounsokdara.video_player.accessibility.livecaption.aimodeltranscribe.AiModelTranscribeActivity
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
 
@@ -63,10 +67,45 @@ class AppNative(
                     "/quick-actions" -> QuickActionsActivity::class.java
                     "/title-bar" -> TitleBarButtonsActivity::class.java
                     "/floating-buttons" -> FloatingButtonsActivity::class.java
+                    "/live-caption" -> LiveCaptionActivity::class.java
+                    "/live-caption/ai-model" -> AiModelTranscribeActivity::class.java
                     else -> null
                 }
                 if (target != null) activity.startActivity(Intent(activity, target))
                 result.success(target != null)
+                return true
+            }
+            "openCaptionSettings" -> {
+                try {
+                    activity.startActivity(Intent(Settings.ACTION_CAPTIONING_SETTINGS))
+                } catch (_: Exception) {
+                    try {
+                        activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    } catch (_: Exception) {
+                    }
+                }
+                result.success(true)
+                return true
+            }
+            "liveCaptionStart" -> {
+                val path = call.argument<String>("path") ?: ""
+                val pos = (call.argument<Number>("positionMs") ?: 0).toLong()
+                if (path.isNotEmpty()) LiveCaptionEngine.start(activity.applicationContext, path, pos)
+                result.success(path.isNotEmpty())
+                return true
+            }
+            "liveCaptionPlayhead" -> {
+                LiveCaptionEngine.playhead((call.argument<Number>("positionMs") ?: 0).toLong())
+                result.success(true)
+                return true
+            }
+            "liveCaptionStop" -> {
+                LiveCaptionEngine.stop(call.argument<Boolean>("release") ?: false)
+                result.success(true)
+                return true
+            }
+            "liveCaptionStatus" -> {
+                result.success(LiveCaptionEngine.status(activity.applicationContext))
                 return true
             }
             NativeConstants.Method.DEBUG_LOG -> {

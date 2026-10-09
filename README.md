@@ -98,6 +98,7 @@ Local-only Material 3 Android player. Playback uses libmpv (media_kit). Files st
 - Reduce motion, large controls, bold text, focus highlight
 - Interface scale
 - Haptic feedback
+- Live Caption (Settings > Accessibility): AI captions of the spoken words while a video plays, fully offline. The speech engine and Whisper models (Base or Small) are downloaded from Manage AI model, with default model and language settings
 
 ## System
 
