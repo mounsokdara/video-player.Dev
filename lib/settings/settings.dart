@@ -136,6 +136,8 @@ class AppSettings {
     'delete': 'Delete',
     'cast': 'Cast',
     'navbar': 'Hide navigation bar',
+    'caption': 'Live Caption',
+    'captionSettings': 'Live Caption settings',
   };
 
   List<String> quickActions = List<String>.from(defaultQuickActions);

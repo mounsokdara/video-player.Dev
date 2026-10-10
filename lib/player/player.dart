@@ -1903,6 +1903,17 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
         }
       case 'volume':
         await _volumeSheet();
+      case 'caption':
+        setState(() => appSettings.liveCaption = !appSettings.liveCaption);
+        await appSettings.save();
+        if (appSettings.liveCaption) {
+          final st = await AndroidBridge.liveCaptionStatus();
+          if (st['ready'] != true) {
+            unawaited(AndroidBridge.toast('Live Caption is on. Download an AI model in Live Caption settings.'));
+          }
+        }
+      case 'captionSettings':
+        await AndroidBridge.openRoute('/live-caption');
       case 'night':
         setState(() {
           night = !night;

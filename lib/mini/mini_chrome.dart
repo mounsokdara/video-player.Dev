@@ -47,7 +47,11 @@ class MiniTransportBar extends StatelessWidget {
     required this.onPrev,
     required this.onPlay,
     required this.onNext,
+    this.onControlDown,
   });
+
+  /// Called when a touch starts on one of the buttons (so the card does not treat it as a tap-to-expand).
+  final VoidCallback? onControlDown;
 
   final String title;
   final bool playing;
@@ -66,13 +70,14 @@ class MiniTransportBar extends StatelessWidget {
           builder: (context, c) {
             final compact = c.maxWidth < MiniGeom.compactW;
             final bw = compact ? (c.maxWidth / 3).clamp(24.0, 36.0).toDouble() : 36.0;
-            final prev = _BarButton(icon: Icons.skip_previous_rounded, width: bw, onTap: onPrev);
+            final prev = _BarButton(icon: Icons.skip_previous_rounded, width: bw, onTap: onPrev, onDown: onControlDown);
             final play = _BarButton(
               icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
               width: bw,
               onTap: onPlay,
+              onDown: onControlDown,
             );
-            final next = _BarButton(icon: Icons.skip_next_rounded, width: bw, onTap: onNext);
+            final next = _BarButton(icon: Icons.skip_next_rounded, width: bw, onTap: onNext, onDown: onControlDown);
             if (compact) {
               // Narrow card: a clipped one-word title is useless, so the three
               // buttons share the full width evenly and stay centered.
@@ -111,20 +116,24 @@ class MiniTransportBar extends StatelessWidget {
 }
 
 class _BarButton extends StatelessWidget {
-  const _BarButton({required this.icon, required this.width, required this.onTap});
+  const _BarButton({required this.icon, required this.width, required this.onTap, this.onDown});
+  final VoidCallback? onDown;
   final IconData icon;
   final double width;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 22,
-      child: SizedBox(
-        width: width,
-        height: MiniGeom.barH,
-        child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
+    return Listener(
+      onPointerDown: (_) => onDown?.call(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 22,
+        child: SizedBox(
+          width: width,
+          height: MiniGeom.barH,
+          child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
+        ),
       ),
     );
   }

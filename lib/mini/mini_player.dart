@@ -58,13 +58,15 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _wasPlayingBeforePark = false;
   bool _moved = false;
   bool _gestureActive = false;
-  int _activePointers = 0;
 
-  /// While a finger is down on the mini player, an invisible full-screen layer catches every other
-  /// finger and forwards it to the same scale recognizer, so a second finger can land anywhere
-  /// (outside the player too) and still joins the pinch, like YouTube's mini player.
-  bool _capturing = false;
-  ScaleGestureRecognizer? _scaleRec;
+  // Touch state. Raw pointers only: no gesture arena, no scale recognizer.
+  final Map<int, Offset> _fingers = <int, Offset>{};
+  final ValueNotifier<bool> _capture = ValueNotifier<bool>(false);
+  bool _controlTouched = false; // set by a transport button right before the card sees the same touch
+  bool _downOnControl = false;
+  bool _dragArmed = true;
+  Offset _gStartFocal = Offset.zero;
+  double _baseSpan = 0;
 
   bool _arrowDragging = false;
   int _dragSide = 0;
@@ -88,6 +90,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
         if (_wAnim != null) _w = _wAnim!.value;
       });
     });
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
     _bind();
   }
 
@@ -112,6 +115,8 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   @override
   void dispose() {
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
+    _capture.dispose();
     _anim.dispose();
     try {
       _ctrl?.removeListener(_onTick);
@@ -285,114 +290,128 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (mounted) setState(() {});
   }
 
-  void _handlePointerDown(PointerDownEvent _) {
-    _activePointers++;
-    if (_activePointers == 1 && !_capturing && mounted) {
-      setState(() => _capturing = true);
+  // ---- touch handling --------------------------------------------------------------------
+  //
+  // Same feel as YouTube's mini player:
+  //  * the first finger lands on the card and drags it 1:1 straight away (no touch slop);
+  //  * every other finger may land ANYWHERE on screen (a capture layer sits under the card and
+  //    keeps the page below still) and joins the same gesture;
+  //  * two or more fingers move the card by their centre and resize it by their spread;
+  //  * lifting a finger carries on with the rest without a jump; the card settles when the last
+  //    finger is up. A tap (no movement) expands; a tap on a transport button is the button's own.
+
+  void _markControlDown() => _controlTouched = true;
+
+  Offset get _focal {
+    var sum = Offset.zero;
+    for (final p in _fingers.values) {
+      sum += p;
     }
-    if (_activePointers >= 2 && _gestureActive) {
-      _moved = true;
-    }
+    return sum / _fingers.length.toDouble();
   }
 
-  void _handlePointerUp(PointerUpEvent _) {
-    _activePointers = math.max(0, _activePointers - 1);
-    _releaseCaptureIfIdle();
-    if (_activePointers == 0 && _gestureActive) {
-      _finalizeGesture();
+  double get _span {
+    if (_fingers.length < 2) return 0;
+    final f = _focal;
+    var total = 0.0;
+    for (final p in _fingers.values) {
+      total += (p - f).distance;
     }
+    return total / _fingers.length;
   }
 
-  void _handlePointerCancel(PointerCancelEvent _) {
-    _activePointers = math.max(0, _activePointers - 1);
-    _releaseCaptureIfIdle();
-    if (_activePointers == 0 && _gestureActive) {
-      _finalizeGesture();
-    }
-  }
-
-  void _releaseCaptureIfIdle() {
-    if (_activePointers == 0 && _capturing && mounted) {
-      setState(() => _capturing = false);
-    }
-  }
-
-  /// A finger that landed outside the card while another finger is on it.
-  void _handleOutsidePointerDown(PointerDownEvent e) {
-    _handlePointerDown(e);
-    final rec = _scaleRec;
-    DeveloperLog.append('mini: extra finger outside the card, pointers=$_activePointers');
-    if (rec != null) rec.addPointer(e);
-  }
-
-  void _onScaleStart(ScaleStartDetails d) {
-    if (_dismissed) return;
-    _anim.stop();
+  /// Re-anchor the card to the fingers as they are now (first touch, finger added or lifted).
+  void _rebase() {
     final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
     final cardGlobal = box?.localToGlobal(Offset.zero) ?? Offset.zero;
     _startW = _w;
     _startPos = _rawPos;
     _parentOrigin = cardGlobal - _startPos;
-    final focalInParent = d.focalPoint - _parentOrigin;
-    _anchorInWidget = focalInParent - _startPos;
-
-    if (!_gestureActive) {
-      _gestureActive = true;
-      _moved = false;
-    }
-    if (d.pointerCount >= 2 || _activePointers >= 2) {
-      _moved = true;
-    }
-
-    final wasParked = _parked;
-    setState(() {
-      _parked = false;
-      _parkSide = 0;
-      _dismissed = false;
-    });
-    if (wasParked) _resumeIfNeeded();
+    _anchorInWidget = _focal - _parentOrigin - _startPos;
+    _baseSpan = _span;
   }
 
-  void _onScaleUpdate(ScaleUpdateDetails d) {
+  void _onFingerDown(PointerDownEvent e, {required bool onCard}) {
+    final control = _controlTouched;
+    _controlTouched = false;
     if (_dismissed) return;
-    if (d.pointerCount >= 2 || _activePointers >= 2) {
+    _fingers[e.pointer] = e.position;
+    if (_fingers.length == 1) {
+      _anim.stop();
+      _gestureActive = true;
+      _moved = false;
+      _gStartFocal = e.position;
+      _downOnControl = onCard && control;
+      _dragArmed = !_downOnControl; // a button press only turns into a drag after the slop
+      _capture.value = true;
+      final wasParked = _parked;
+      if (wasParked || _parkSide != 0) {
+        setState(() {
+          _parked = false;
+          _parkSide = 0;
+        });
+        if (wasParked) _resumeIfNeeded();
+      }
+    } else {
       _moved = true;
+      _dragArmed = true;
+      DeveloperLog.append('mini: finger ${_fingers.length} down${onCard ? '' : ' outside the card'}');
     }
-    final pinching = (d.scale - 1).abs() > 0.02 || d.pointerCount >= 2;
-    if ((_startPos - _rawPos).distance > MiniGeom.tapSlop ||
-        (d.focalPoint - (_parentOrigin + _startPos + _anchorInWidget))
-                .distance >
-            MiniGeom.tapSlop ||
-        pinching) {
+    _rebase();
+  }
+
+  void _onFingerMove(PointerMoveEvent e) {
+    if (!_gestureActive || _dismissed || !_fingers.containsKey(e.pointer)) return;
+    _fingers[e.pointer] = e.position;
+    final focal = _focal;
+    if (!_dragArmed) {
+      if ((focal - _gStartFocal).distance <= MiniGeom.tapSlop) return;
+      _dragArmed = true;
+      _rebase(); // start following from here, no jump
+    }
+    if ((focal - _gStartFocal).distance > MiniGeom.tapSlop) _moved = true;
+
+    var targetW = _startW;
+    if (_fingers.length >= 2 && _baseSpan > 0) {
       _moved = true;
+      final hi = MiniPhysics.maxWFor(_screen, _video);
+      final lo = math.min(MiniGeom.minW, hi);
+      targetW = MiniPhysics.softClamp(_startW * (_span / _baseSpan), lo, hi);
     }
-    final hi = MiniPhysics.maxWFor(_screen, _video);
-    final lo = math.min(MiniGeom.minW, hi);
-    final targetW = MiniPhysics.softClamp(_startW * d.scale, lo, hi);
     final ratio = _startW == 0 ? 1.0 : targetW / _startW;
-    final focalInParent = d.focalPoint - _parentOrigin;
-    final newPos = focalInParent - _anchorInWidget * ratio;
+    final newPos = focal - _parentOrigin - _anchorInWidget * ratio;
     setState(() {
       _w = targetW;
       _pos = newPos;
-      if (_parked) {
-        _parked = false;
-        _parkSide = 0;
-        _resumeIfNeeded();
-      }
     });
   }
 
-  void _onScaleEnd(ScaleEndDetails d) {
-    if (_dismissed) return;
-    if (_activePointers > 0) return;
+  void _onFingerUp(PointerEvent e) {
+    if (_fingers.remove(e.pointer) == null) return;
+    if (e is PointerCancelEvent) _moved = true; // never expand from a cancelled touch
+    if (_fingers.isNotEmpty) {
+      _rebase();
+      return;
+    }
+    _capture.value = false;
     _finalizeGesture();
+  }
+
+  /// Every move/up/cancel of a finger we track, wherever it is, even if the widget it landed on is gone.
+  void _onGlobalPointer(PointerEvent e) {
+    if (!_fingers.containsKey(e.pointer)) return;
+    if (e is PointerMoveEvent) {
+      _onFingerMove(e);
+    } else if (e is PointerUpEvent || e is PointerCancelEvent) {
+      _onFingerUp(e);
+    }
   }
 
   void _finalizeGesture() {
     if (!_gestureActive) return;
     _gestureActive = false;
     if (!_moved) {
+      if (_downOnControl) return; // the button handles its own tap
       if (_parked) {
         _unpark();
       } else {
@@ -631,19 +650,25 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        if (_capturing)
-          Positioned.fill(
-            // Below the card: touches on the card still reach the card itself; touches anywhere else
-            // are swallowed (the page underneath must not scroll while pinching) and forwarded.
-            child: Listener(
-              behavior: HitTestBehavior.opaque,
-              onPointerDown: _handleOutsidePointerDown,
-              onPointerUp: _handlePointerUp,
-              onPointerCancel: _handlePointerCancel,
-              child: const SizedBox.expand(),
+        // Under the card, over the page: while a finger is down on the card it swallows every other
+        // touch (so the page below stays still) and feeds it to the same gesture. Always mounted,
+        // only switched on and off, so the card is never rebuilt in the middle of a touch.
+        Positioned.fill(
+          key: const ValueKey('mini-capture'),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _capture,
+            builder: (context, on, _) => IgnorePointer(
+              ignoring: !on,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) => _onFingerDown(e, onCard: false),
+                child: const SizedBox.expand(),
+              ),
             ),
           ),
+        ),
         Positioned(
+          key: const ValueKey('mini-card'),
           left: pos.dx,
           top: pos.dy,
           width: _w,
@@ -653,24 +678,10 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
             child: IgnorePointer(
               ignoring: _dismissed || opacity < 0.1,
               child: Listener(
-                onPointerDown: _handlePointerDown,
-                onPointerUp: _handlePointerUp,
-                onPointerCancel: _handlePointerCancel,
-                child: RawGestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  gestures: <Type, GestureRecognizerFactory>{
-                    ScaleGestureRecognizer: GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-                      () => ScaleGestureRecognizer(),
-                      (ScaleGestureRecognizer r) {
-                        _scaleRec = r;
-                        r
-                          ..dragStartBehavior = DragStartBehavior.start
-                          ..onStart = _onScaleStart
-                          ..onUpdate = _onScaleUpdate
-                          ..onEnd = _onScaleEnd;
-                      },
-                    ),
-                  },
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) => _onFingerDown(e, onCard: true),
+                child: KeyedSubtree(
+                  key: const ValueKey('mini-card-body'),
                   child: Stack(
                     children: [
                       Material(
@@ -726,6 +737,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
                               onPrev: () => unawaited(widget.onPrev()),
                               onPlay: () => unawaited(_togglePlay()),
                               onNext: () => unawaited(widget.onNext()),
+                              onControlDown: _markControlDown,
                             ),
                           ],
                         ),
