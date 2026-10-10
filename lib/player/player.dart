@@ -117,6 +117,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   bool _ateTap = false;
   bool _handedOff = false;
   bool _endedLatch = false;
+
+  /// True once this video has really played (position moved). Until then no "ended" signal is
+  /// trusted: a video still opening (0:00 length, stale position or completed flag) must never
+  /// skip to the next one.
+  bool _endArmed = false;
+  int _armFromMs = -1;
+  DateTime _openedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime? _completedSince;
+  Timer? _endRecheck;
   int _openFails = 0;
   bool _ytMax = false;
   bool _ytQueue = false;
@@ -171,6 +180,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       _lastPlaying = vc?.value.isPlaying ?? false;
       _posTick.value = vc?.value.position.inMilliseconds ?? 0;
       _endedLatch = false;
+      _endArmed = true; // returning from the mini player: it was already playing
+      _openedAt = DateTime.now().subtract(const Duration(seconds: 5));
       _openFails = 0;
       final keptEngine = vc;
       if (keptEngine != null) PlaybackSession.bind(keptEngine, item);
@@ -377,6 +388,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     final gen = ++_playerGen;
     ready = false;
     _endedLatch = false;
+    _endArmed = false;
+    _armFromMs = -1;
+    _completedSince = null;
+    _endRecheck?.cancel();
     _scrub = null;
     _previewBytes = null;
     _resetZoom();
@@ -432,6 +447,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       PlaybackSession.bind(engine, item);
       _openFails = 0;
       _endedLatch = false;
+      _openedAt = DateTime.now();
       await AndroidBridge.requestAudioFocus();
       await engine.play();
       _lastPlaying = true;
@@ -473,15 +489,20 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
         unawaited(CrashLog.breadcrumb('Source error ${item.path}: $desc'));
         if (!_endedLatch) {
           _endedLatch = true;
+          DeveloperLog.player('next: source error ${c.value.errorDescription ?? ''}');
           unawaited(_next());
         }
         return;
       }
       final pos = c.value.position.inMilliseconds.toDouble();
-      final dur = c.value.duration.inMilliseconds.toDouble().clamp(1, double.infinity);
-      final p = (pos / dur).clamp(0.0, 1.0).toDouble();
-      item.progress = p;
-      appSettings.resumeMap[item.path] = p;
+      final posMs = c.value.position.inMilliseconds;
+      final durMs = c.value.duration.inMilliseconds;
+      // Only record progress once the real length is known (0:00 at open would read as 100%).
+      if (durMs > 0) {
+        final p = (pos / durMs).clamp(0.0, 1.0).toDouble();
+        item.progress = p;
+        appSettings.resumeMap[item.path] = p;
+      }
       if (abA != null && abB != null && pos / 1000 >= abB!) {
         c.seekTo(Duration(milliseconds: (abA! * 1000).round()));
       }
@@ -495,13 +516,35 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       } else if (PlaybackSession.away) {
         PlaybackSession.notePlayback(c, title: item.title, artist: item.folderName);
       }
-      if (!_endedLatch &&
-          (c.value.completed ||
-              (c.value.duration > Duration.zero &&
-                  c.value.position >= c.value.duration - const Duration(milliseconds: 400) &&
-                  !c.value.isPlaying))) {
-        _endedLatch = true;
-        _onEnded();
+      if (!_endArmed && ready && playing) {
+        if (_armFromMs < 0) {
+          _armFromMs = posMs;
+        } else if ((posMs - _armFromMs).abs() >= 500) {
+          _endArmed = true; // the video has really played
+        }
+      }
+      if (!_endedLatch && ready && _endArmed && nowTick.difference(_openedAt) >= const Duration(milliseconds: 1500)) {
+        final nearEnd = durMs > 0 && posMs >= durMs - 400;
+        // A "completed" flag far from the end is only trusted when it stays set (truncated files).
+        final completedSane = c.value.completed && (durMs <= 0 || posMs >= durMs - 3000);
+        if (c.value.completed && !playing) {
+          _completedSince ??= nowTick;
+          if (!completedSane) {
+            _endRecheck?.cancel();
+            _endRecheck = Timer(const Duration(milliseconds: 2000), () {
+              if (mounted) _tick();
+            });
+          }
+        } else {
+          _completedSince = null;
+        }
+        final completedHeld = _completedSince != null &&
+            nowTick.difference(_completedSince!) >= const Duration(milliseconds: 1800);
+        if (completedSane || completedHeld || (nearEnd && !playing)) {
+          _endedLatch = true;
+          DeveloperLog.player('next: ended pos=${posMs}ms dur=${durMs}ms completed=${c.value.completed}');
+          _onEnded();
+        }
       }
       if (nowTick.difference(_lastUi) >= const Duration(milliseconds: 200)) {
         _lastUi = nowTick;
@@ -677,6 +720,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
 
   @override
   void dispose() {
+    _endRecheck?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     hideTimer?.cancel();
     overlayTimer?.cancel();

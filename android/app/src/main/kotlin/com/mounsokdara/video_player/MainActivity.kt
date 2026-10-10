@@ -864,6 +864,25 @@ open class MainActivity : FlutterActivity() {
         }
     }
 
+    private val probedDurations = HashMap<String, Long>()
+
+    /** Duration straight from the file, remembered per file+date so rescans stay fast. Runs off the main thread. */
+    private fun probeDuration(path: String, modified: Long): Long {
+        val key = "$path|$modified"
+        synchronized(probedDurations) { probedDurations[key]?.let { return it } }
+        var d = 0L
+        val r = MediaMetadataRetriever()
+        try {
+            r.setDataSource(path)
+            d = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+        } catch (_: Throwable) {
+        } finally {
+            try { r.release() } catch (_: Throwable) {}
+        }
+        synchronized(probedDurations) { probedDurations[key] = d }
+        return d
+    }
+
     @Suppress("DEPRECATION")
     private fun listIndexedVideos(): List<Map<String, Any?>> {
         val out = ArrayList<Map<String, Any?>>()
@@ -908,6 +927,9 @@ open class MainActivity : FlutterActivity() {
                     if (size <= 0) size = file.length()
                     val name = file.name
                     val modified = if (iMod >= 0) c.getLong(iMod) * 1000 else file.lastModified()
+                    var durationMs = if (iDur >= 0) c.getLong(iDur) else 0L
+                    // New or unindexed files (Telegram, camera, screen recordings) have no duration in MediaStore yet.
+                    if (durationMs <= 0L) durationMs = probeDuration(path, modified)
                     out.add(
                         mapOf(
                             "id" to if (iId >= 0) c.getLong(iId).toString() else path,
@@ -915,7 +937,7 @@ open class MainActivity : FlutterActivity() {
                             "name" to name,
                             "size" to size,
                             "modified" to modified,
-                            "durationMs" to if (iDur >= 0) c.getLong(iDur) else 0L,
+                            "durationMs" to durationMs,
                             "width" to if (iW >= 0) c.getInt(iW) else 0,
                             "height" to if (iH >= 0) c.getInt(iH) else 0,
                             "mime" to if (iMime >= 0) c.getString(iMime) else null,
