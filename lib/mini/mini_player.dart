@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player_app/accessibility/live_caption/live_caption_overlay.dart';
+import 'package:video_player_app/core/developer_log.dart';
 import 'package:video_player_app/playback/engine.dart';
 
 import 'package:video_player_app/native/android_bridge.dart';
@@ -57,6 +59,12 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _moved = false;
   bool _gestureActive = false;
   int _activePointers = 0;
+
+  /// While a finger is down on the mini player, an invisible full-screen layer catches every other
+  /// finger and forwards it to the same scale recognizer, so a second finger can land anywhere
+  /// (outside the player too) and still joins the pinch, like YouTube's mini player.
+  bool _capturing = false;
+  ScaleGestureRecognizer? _scaleRec;
 
   bool _arrowDragging = false;
   int _dragSide = 0;
@@ -279,6 +287,9 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   void _handlePointerDown(PointerDownEvent _) {
     _activePointers++;
+    if (_activePointers == 1 && !_capturing && mounted) {
+      setState(() => _capturing = true);
+    }
     if (_activePointers >= 2 && _gestureActive) {
       _moved = true;
     }
@@ -286,6 +297,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   void _handlePointerUp(PointerUpEvent _) {
     _activePointers = math.max(0, _activePointers - 1);
+    _releaseCaptureIfIdle();
     if (_activePointers == 0 && _gestureActive) {
       _finalizeGesture();
     }
@@ -293,9 +305,24 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   void _handlePointerCancel(PointerCancelEvent _) {
     _activePointers = math.max(0, _activePointers - 1);
+    _releaseCaptureIfIdle();
     if (_activePointers == 0 && _gestureActive) {
       _finalizeGesture();
     }
+  }
+
+  void _releaseCaptureIfIdle() {
+    if (_activePointers == 0 && _capturing && mounted) {
+      setState(() => _capturing = false);
+    }
+  }
+
+  /// A finger that landed outside the card while another finger is on it.
+  void _handleOutsidePointerDown(PointerDownEvent e) {
+    _handlePointerDown(e);
+    final rec = _scaleRec;
+    DeveloperLog.append('mini: extra finger outside the card, pointers=$_activePointers');
+    if (rec != null) rec.addPointer(e);
   }
 
   void _onScaleStart(ScaleStartDetails d) {
@@ -604,6 +631,18 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        if (_capturing)
+          Positioned.fill(
+            // Below the card: touches on the card still reach the card itself; touches anywhere else
+            // are swallowed (the page underneath must not scroll while pinching) and forwarded.
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: _handleOutsidePointerDown,
+              onPointerUp: _handlePointerUp,
+              onPointerCancel: _handlePointerCancel,
+              child: const SizedBox.expand(),
+            ),
+          ),
         Positioned(
           left: pos.dx,
           top: pos.dy,
@@ -617,11 +656,21 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
                 onPointerDown: _handlePointerDown,
                 onPointerUp: _handlePointerUp,
                 onPointerCancel: _handlePointerCancel,
-                child: GestureDetector(
+                child: RawGestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onScaleStart: _onScaleStart,
-                  onScaleUpdate: _onScaleUpdate,
-                  onScaleEnd: _onScaleEnd,
+                  gestures: <Type, GestureRecognizerFactory>{
+                    ScaleGestureRecognizer: GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
+                      () => ScaleGestureRecognizer(),
+                      (ScaleGestureRecognizer r) {
+                        _scaleRec = r;
+                        r
+                          ..dragStartBehavior = DragStartBehavior.start
+                          ..onStart = _onScaleStart
+                          ..onUpdate = _onScaleUpdate
+                          ..onEnd = _onScaleEnd;
+                      },
+                    ),
+                  },
                   child: Stack(
                     children: [
                       Material(
