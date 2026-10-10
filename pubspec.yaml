@@ -1,7 +1,8 @@
 name: video_player_app
 description: Material 3 local video player for Android
 publish_to: "none"
-version: 1.0.3+7
+# NOT the app version. Edit version.txt instead (this field is only kept because Flutter requires it).
+version: 1.0.2+5
 
 environment:
   sdk: ^3.13.2

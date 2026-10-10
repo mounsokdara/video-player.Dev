@@ -67,13 +67,22 @@ jobs:
       - name: Build release APK
         run: |
           set +e
-          flutter build apk --release 2>&1 | tee /tmp/build.log
+          VER=$(cut -d+ -f1 version.txt | tr -d '[:space:]')
+          flutter build apk --release --dart-define=APP_VERSION="$VER" 2>&1 | tee /tmp/build.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
             grep -n -E "^e: |error:|FAILURE|What went wrong|Execution failed|AAPT|not found|Unresolved|Could not" /tmp/build.log | head -15 | while IFS= read -r l; do echo "::error::${l:0:480}"; done
             grep -n -A6 "What went wrong" /tmp/build.log | head -12 | while IFS= read -r l; do echo "::error::${l:0:480}"; done
           fi
           exit $code
+      - name: Verify APK version matches version.txt
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          want_name=$(cut -d+ -f1 version.txt | tr -d '[:space:]')
+          want_code=$(cut -d+ -f2 version.txt | tr -d '[:space:]')
+          out=$("$AAPT" dump badging build/app/outputs/flutter-apk/app-release.apk | grep -m1 "^package:")
+          echo "$out"
+          echo "$out" | grep -q "versionName='$want_name'" && echo "$out" | grep -q "versionCode='$want_code'" || { echo "::error::APK version does not match version.txt ($want_name+$want_code)"; exit 1; }
       - name: Sign + verify APK (apksigner v1/v2/v3)
         env:
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
