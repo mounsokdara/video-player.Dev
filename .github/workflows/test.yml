@@ -75,6 +75,18 @@ jobs:
             grep -n -A6 "What went wrong" /tmp/build.log | head -12 | while IFS= read -r l; do echo "::error::${l:0:480}"; done
           fi
           exit $code
+      - name: F-Droid check - no Google Play Core in APK
+        run: |
+          DEXDUMP=$(ls "$ANDROID_HOME"/build-tools/*/dexdump | sort -V | tail -1)
+          rm -rf /tmp/dex && mkdir -p /tmp/dex
+          unzip -q -o build/app/outputs/flutter-apk/app-release.apk 'classes*.dex' -d /tmp/dex
+          found=0
+          for f in /tmp/dex/classes*.dex; do
+            "$DEXDUMP" "$f" | grep -oE "com/google/android/play/[A-Za-z0-9_/$]+" | sort -u | head -20 > /tmp/play.txt
+            if [ -s /tmp/play.txt ]; then echo "$f:"; cat /tmp/play.txt; found=1; fi
+          done
+          [ "$found" -eq 0 ] || { echo "::error::Google Play Core references are still in the APK (F-Droid scanner would fail)"; exit 1; }
+          echo "No com/google/android/play references in any dex"
       - name: Verify APK version matches version.txt
         run: |
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
