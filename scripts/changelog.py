@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Automatic changelog + time snap for Video Player. Standard library only.
 
-versionCode is date based: YYMMDD + two digit build number (example 26101151).
+versionCode is a plain counter (5, 6, 11, 12 ...): every new build is the previous number + 1.
 The F-Droid changelog is named after the versionCode, so F-Droid matches it to the build.
 Everything lives under fastlane/ (F-Droid). Nothing is written to the repo root.
 
   python3 scripts/changelog.py                     make the F-Droid file for version.txt if it is missing
   python3 scripts/changelog.py --regen             rebuild it from the commits since the last release tag
-  python3 scripts/changelog.py --bump              next versionCode (today's date, build number +1), then write
+  python3 scripts/changelog.py --bump              next versionCode (previous + 1), then write
   python3 scripts/changelog.py --new-release       same as --bump and rebuild from the commits
   python3 scripts/changelog.py --release-notes F   also write GitHub release notes to F (from the F-Droid file)
 
@@ -62,12 +62,8 @@ def write_version(name, code):
     open(p, "w").write(s)
 
 
-def next_code(code, today=None):
-    today = today or datetime.now(timezone.utc)
-    prefix = int(today.strftime("%y%m%d"))
-    if code // 100 == prefix:
-        return code + 1
-    return prefix * 100 + 1
+def next_code(code):
+    return code + 1
 
 
 def utc(iso):
@@ -185,7 +181,7 @@ def newest_commit():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bump", action="store_true", help="set the next date based versionCode first")
+    ap.add_argument("--bump", action="store_true", help="set the next versionCode (previous + 1) first")
     ap.add_argument("--new-release", action="store_true", help="bump the versionCode and rebuild the text from the commits")
     ap.add_argument("--regen", action="store_true", help="rebuild the F-Droid text from the commits even if it exists")
     ap.add_argument("--release-notes", metavar="FILE")
