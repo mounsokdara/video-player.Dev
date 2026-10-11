@@ -1,7 +1,7 @@
 # RELEASE WORKFLOW for the PUBLIC repo (mounsokdara/video-player).
 # Lives here, NOT in .github/workflows, so the dev repo never publishes a release.
 # After the dev run passes: copy this file to .github/workflows/build-apk.yml in the public repo,
-# together with scripts/changelog.py, changelog/BASE and changelog/highlights.txt.
+# together with scripts/changelog.py. The changelog lives only in fastlane/ (F-Droid), nothing in the repo root.
 name: Build APK
 
 on:

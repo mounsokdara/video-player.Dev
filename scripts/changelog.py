@@ -2,20 +2,20 @@
 """Automatic changelog + time snap for Video Player. Standard library only.
 
 versionCode is date based: YYMMDD + two digit build number (example 26101151).
-Every changelog file is named after the versionCode, so F-Droid matches it to the build.
+The F-Droid changelog is named after the versionCode, so F-Droid matches it to the build.
+Everything lives under fastlane/ (F-Droid). Nothing is written to the repo root.
 
-  python3 scripts/changelog.py                     write both changelog files for version.txt
+  python3 scripts/changelog.py                     make the F-Droid file for version.txt if it is missing
+  python3 scripts/changelog.py --regen             rebuild it from the commits since the last release tag
   python3 scripts/changelog.py --bump              next versionCode (today's date, build number +1), then write
-  python3 scripts/changelog.py --new-release       bump AND start a fresh list (BASE moves to HEAD)
-  python3 scripts/changelog.py --release-notes F   also write GitHub release notes to F
+  python3 scripts/changelog.py --new-release       same as --bump and rebuild from the commits
+  python3 scripts/changelog.py --release-notes F   also write GitHub release notes to F (from the F-Droid file)
 
-changelog/BASE holds the last commit already covered by released notes. Everything after it is "new".
+File written (idempotent):
+  fastlane/metadata/android/en-US/changelogs/<versionCode>.txt   short F-Droid text (500 bytes max)
 
-Files written (idempotent: the same HEAD always gives the same text, so no commit churn):
-  changelog/<versionCode>.txt                                   full list, every change with its own time snap
-  fastlane/metadata/android/en-US/changelogs/<versionCode>.txt  short F-Droid text (500 bytes max)
-
-Optional hand written override for the F-Droid text: changelog/highlights.txt (one bullet per line).
+The F-Droid file IS the hand written changelog: if it already exists for this versionCode it is kept as it is
+(and used for the GitHub release notes) unless --regen / --new-release is given.
 """
 import argparse
 import os
@@ -26,7 +26,6 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FDROID_DIR = os.path.join(ROOT, "fastlane", "metadata", "android", "en-US", "changelogs")
-FULL_DIR = os.path.join(ROOT, "changelog")
 FDROID_MAX_BYTES = 500
 ICT = timezone(timedelta(hours=7))
 
@@ -76,22 +75,12 @@ def utc(iso):
 
 
 def read_base():
-    p = os.path.join(FULL_DIR, "BASE")
-    if not os.path.exists(p):
-        return None
-    h = open(p).read().split()[0]
+    """Newest release tag (v*) in this history; everything after it is new. None = no tag yet."""
     try:
-        sh("git", "merge-base", "--is-ancestor", h, "HEAD")
+        return sh("git", "describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD").strip() or None
     except subprocess.CalledProcessError:
-        print(f"note: BASE {h} is not in this history, using the last 60 commits", file=sys.stderr)
+        print("note: no release tag in this history, using the last 60 commits", file=sys.stderr)
         return None
-    return h
-
-
-def write_base(h):
-    os.makedirs(FULL_DIR, exist_ok=True)
-    subj = sh("git", "log", "-1", "--format=%s", h).strip()
-    open(os.path.join(FULL_DIR, "BASE"), "w").write(f"{h}  {subj}\n")
 
 
 def commits_since(base):
@@ -147,42 +136,25 @@ def fmt_time(t):
     return f"{t:%Y-%m-%d %H:%M} UTC | {t.astimezone(ICT):%H:%M} ICT"
 
 
-def write_full(name, code, head, base, items, total):
-    os.makedirs(FULL_DIR, exist_ok=True)
-    lines = [
-        f"Video Player v{name}  (versionCode {code})",
-        f"Time snap : {fmt_time(head['t'])}   (time of the newest commit)",
-        f"Commit    : {head['h']}",
-        f"Since     : {open(os.path.join(FULL_DIR, 'BASE')).read().strip()}" if base else "Since     : last 60 commits (no changelog/BASE)",
-        "-" * 64,
-        f"CHANGES, newest first ({len(items)} user facing, {total - len(items)} internal commits left out)",
-        "",
-    ]
-    for it in items:
-        lines.append(f"[{fmt_time(it['t'])}] {it['h']}  {it['kind']}: {it['text']}")
-    lines.append("")
-    path = os.path.join(FULL_DIR, f"{code}.txt")
-    open(path, "w", encoding="utf-8").write("\n".join(lines))
-    return path
+def fdroid_path(code):
+    return os.path.join(FDROID_DIR, f"{code}.txt")
 
 
-def read_highlights(name):
-    """Hand written bullets from changelog/highlights.txt, only for the version they were written for."""
-    hl = os.path.join(FULL_DIR, "highlights.txt")
-    if not os.path.exists(hl):
+def read_fdroid(code):
+    """(header, bullets) of the existing F-Droid changelog for this versionCode, or None."""
+    p = fdroid_path(code)
+    if not os.path.exists(p):
         return None
-    lines = [l.strip() for l in open(hl, encoding="utf-8") if l.strip()]
-    if lines and lines[0].lower() == f"# v{name}".lower():
-        return [l.lstrip("•-* ").strip() for l in lines[1:]]
-    return None
+    lines = [l.strip() for l in open(p, encoding="utf-8") if l.strip()]
+    if not lines:
+        return None
+    return lines[0], [l.lstrip("•-* \t").strip() for l in lines[1:]]
 
 
 def fdroid_text(name, head, items):
     header = f"v{name} ({head['t']:%Y-%m-%d})"
-    bullets = read_highlights(name)
-    if bullets is None:
-        order = {"New": 0, "Fix": 1, "Changed": 2}
-        bullets = [i["text"] for i in sorted(items, key=lambda i: order[i["kind"]]) if not i["text"].endswith("...")]
+    order = {"New": 0, "Fix": 1, "Changed": 2}
+    bullets = [i["text"] for i in sorted(items, key=lambda i: order[i["kind"]]) if not i["text"].endswith("...")]
     out = header
     for b in bullets:
         line = f"\n• {b}"
@@ -194,30 +166,28 @@ def fdroid_text(name, head, items):
 
 def write_fdroid(code, text):
     os.makedirs(FDROID_DIR, exist_ok=True)
-    path = os.path.join(FDROID_DIR, f"{code}.txt")
+    path = fdroid_path(code)
     open(path, "w", encoding="utf-8").write(text)
     assert len(text.encode("utf-8")) <= FDROID_MAX_BYTES
     return path
 
 
-def write_release_notes(path, name, code, head, items):
-    out = ["# Changelog", "", f"## {name}", ""]
-    bullets = read_highlights(name)
-    if bullets:  # a hand written list for this version wins over the commit-derived one
-        out += [f"- {b}" for b in bullets] + [""]
-        items = []
-    for title, k in (("New features", "New"), ("Fixes", "Fix"), ("Changed", "Changed")):
-        sel = [i for i in items if i["kind"] == k]
-        if sel:
-            out += [f"{title}:"] + [f"- {i['text']}" for i in sel] + [""]
+def write_release_notes(path, name, code, head, bullets):
+    out = ["# Changelog", "", f"## {name}", ""] + [f"- {b}" for b in bullets] + [""]
     out += [f"Time snap: {fmt_time(head['t'])}  |  versionCode {code}  |  commit {head['h']}", ""]
     open(path, "w", encoding="utf-8").write("\n".join(out))
+
+
+def newest_commit():
+    h, iso = sh("git", "log", "-1", "--format=%h%x1f%aI").strip().split("\x1f")
+    return {"h": h, "t": utc(iso)}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bump", action="store_true", help="set the next date based versionCode first")
-    ap.add_argument("--new-release", action="store_true", help="bump the versionCode and start a fresh change list")
+    ap.add_argument("--new-release", action="store_true", help="bump the versionCode and rebuild the text from the commits")
+    ap.add_argument("--regen", action="store_true", help="rebuild the F-Droid text from the commits even if it exists")
     ap.add_argument("--release-notes", metavar="FILE")
     a = ap.parse_args()
 
@@ -226,22 +196,23 @@ def main():
         code = next_code(code)
         write_version(name, code)
         print(f"version.txt -> {name}+{code}")
-    if a.new_release:
-        write_base(sh("git", "rev-parse", "--short", "HEAD").strip())
-        print("changelog/BASE -> HEAD (fresh change list)")
 
-    base = read_base()
-    rows = commits_since(base)
-    if not rows:
-        print("no new commits since BASE, nothing to write")
-        return
-    items = build_items(rows)
-    head = rows[0]
-    print("wrote", os.path.relpath(write_full(name, code, head, base, items, len(rows)), ROOT))
-    text = fdroid_text(name, head, items)
-    print("wrote", os.path.relpath(write_fdroid(code, text), ROOT), f"({len(text.encode('utf-8'))} bytes)")
+    existing = read_fdroid(code)
+    if existing is None or a.regen or a.new_release:
+        rows = commits_since(read_base())
+        if not rows:
+            print("no new commits since the last release tag, nothing to write")
+        else:
+            text = fdroid_text(name, rows[0], build_items(rows))
+            print("wrote", os.path.relpath(write_fdroid(code, text), ROOT), f"({len(text.encode('utf-8'))} bytes)")
+        existing = read_fdroid(code)
+    else:
+        print("kept", os.path.relpath(fdroid_path(code), ROOT), "(already written for this versionCode)")
+
     if a.release_notes:
-        write_release_notes(a.release_notes, name, code, head, items)
+        if existing is None:
+            sys.exit("no F-Droid changelog for this versionCode, cannot write release notes")
+        write_release_notes(a.release_notes, name, code, newest_commit(), existing[1])
         print("wrote", a.release_notes)
 
 
