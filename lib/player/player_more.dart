@@ -36,6 +36,8 @@ IconData playerActionIcon(String id) => switch (id) {
       'delete' => Icons.delete_outline,
       'cast' => Icons.cast,
       'navbar' => Icons.navigation_outlined,
+      'caption' => Icons.closed_caption_outlined,
+      'captionSettings' => Icons.manage_accounts_outlined,
       _ => Icons.tune,
     };
 
@@ -47,6 +49,8 @@ String? playerActionSub(String id, {required double speed, required double zoomS
       'background' => appSettings.backgroundPlay ? 'On' : 'Off',
       'popup' => appSettings.autoMiniplayer ? 'On' : 'Off',
       'navbar' => appSettings.alwaysHideNavBar ? 'Always hidden' : 'Follows controls',
+      'caption' => appSettings.liveCaption ? 'On' : 'Off',
+      'captionSettings' => 'AI model, language, caption style',
       _ => null,
     };
 
@@ -61,11 +65,12 @@ Future<void> showPlayerMoreSheet({
   const sections = <String, List<String>>{
     'Playback': ['speed', 'lock', 'ab', 'skipBack', 'skipForward', 'playopt', 'decoder', 'timer', 'repeat'],
     'Audio': ['background', 'eq', 'volume'],
+    'Captions': ['caption', 'captionSettings'],
     'Picture': ['screenshot', 'aspect', 'brightness', 'rotate', 'night', 'zoom', 'color', 'mirror', 'invert'],
     'System': ['popup', 'navbar', 'cast'],
     'File': ['bookmark', 'share', 'properties', 'delete'],
   };
-  const toggles = {'background', 'popup', 'night', 'mirror', 'invert', 'navbar', 'bookmark'};
+  const toggles = {'background', 'popup', 'night', 'mirror', 'invert', 'navbar', 'bookmark', 'caption'};
   final scheme = Theme.of(context).colorScheme;
   return SystemBars.modal(
     () => showModalBottomSheet<void>(
@@ -87,6 +92,7 @@ Future<void> showPlayerMoreSheet({
                       'mirror' => appSettings.mirror,
                       'invert' => appSettings.invertColors,
                       'navbar' => appSettings.alwaysHideNavBar,
+                      'caption' => appSettings.liveCaption,
                       'bookmark' => item.bookmarked || appSettings.bookmarks.contains(item.path),
                       _ => false,
                     };

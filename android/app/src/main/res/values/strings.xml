@@ -16,4 +16,10 @@
     <string name="floating_buttons_title">Floating action buttons</string>
     <string name="playback_channel">Playback</string>
     <string name="playback_channel_desc">Now playing controls</string>
+    <string name="live_caption_title">Live Caption</string>
+    <string name="ai_model_title">Manage AI model</string>
+    <string name="ai_model_download_title">Download</string>
+    <string name="ai_model_settings_title">Settings</string>
+    <string name="ai_model_default_model_title">Default model</string>
+    <string name="ai_model_default_lang_title">Default language</string>
 </resources>

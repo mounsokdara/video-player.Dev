@@ -194,6 +194,65 @@
         </activity>
 
         <activity
+            android:name=".accessibility.livecaption.LiveCaptionActivity"
+            android:exported="false"
+            android:label="@string/live_caption_title"
+            android:launchMode="standard"
+            android:theme="@style/PageLaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.InitialRoute"
+                android:value="/live-caption" />
+        </activity>
+
+        <activity
+            android:name=".accessibility.livecaption.aimodeltranscribe.AiModelTranscribeActivity"
+            android:exported="false"
+            android:label="@string/ai_model_title"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
+
+        <activity
+            android:name=".accessibility.livecaption.aimodeltranscribe.download.DownloadActivity"
+            android:exported="false"
+            android:label="@string/ai_model_download_title"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
+
+        <activity
+            android:name=".accessibility.livecaption.aimodeltranscribe.settings.SettingsActivity"
+            android:exported="false"
+            android:label="@string/ai_model_settings_title"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
+
+        <activity
+            android:name=".accessibility.livecaption.aimodeltranscribe.settings.DefaultModelActivity"
+            android:exported="false"
+            android:label="@string/ai_model_default_model_title"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
+
+        <activity
+            android:name=".accessibility.livecaption.aimodeltranscribe.settings.DefaultLangActivity"
+            android:exported="false"
+            android:label="@string/ai_model_default_lang_title"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" />
+
+        <activity
             android:name=".ThemeSettingsActivity"
             android:exported="true"
             android:label="@string/theme_settings_title"

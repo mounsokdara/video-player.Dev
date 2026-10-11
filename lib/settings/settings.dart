@@ -60,6 +60,7 @@ class AppSettings {
   // Accessibility
   bool highContrast = false;
   bool reduceMotion = false;
+  bool liveCaption = false;
   bool largeControls = false;
   bool colorBlindDeuteranopia = false;
   bool colorBlindProtanopia = false;
@@ -135,6 +136,8 @@ class AppSettings {
     'delete': 'Delete',
     'cast': 'Cast',
     'navbar': 'Hide navigation bar',
+    'caption': 'Live Caption',
+    'captionSettings': 'Live Caption settings',
   };
 
   List<String> quickActions = List<String>.from(defaultQuickActions);
@@ -253,6 +256,7 @@ class AppSettings {
     playMode = PlayMode.values[(p.getInt('playMode') ?? 0).clamp(0, PlayMode.values.length - 1)];
     highContrast = p.getBool('highContrast') ?? false;
     reduceMotion = p.getBool('reduceMotion') ?? false;
+    liveCaption = p.getBool('liveCaption') ?? false;
     largeControls = p.getBool('largeControls') ?? false;
     colorBlindDeuteranopia = p.getBool('cbD') ?? false;
     colorBlindProtanopia = p.getBool('cbP') ?? false;
@@ -417,6 +421,7 @@ class AppSettings {
     await p.setInt('playMode', playMode.index);
     await p.setBool('highContrast', highContrast);
     await p.setBool('reduceMotion', reduceMotion);
+    await p.setBool('liveCaption', liveCaption);
     await p.setBool('largeControls', largeControls);
     await p.setBool('cbD', colorBlindDeuteranopia);
     await p.setBool('cbP', colorBlindProtanopia);

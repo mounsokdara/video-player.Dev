@@ -87,6 +87,8 @@ class HudLayer extends StatelessWidget {
         'delete' => Icons.delete_outline,
         'cast' => Icons.cast,
         'navbar' => Icons.navigation_outlined,
+        'caption' => Icons.closed_caption_outlined,
+        'captionSettings' => Icons.manage_accounts_outlined,
         'color' => Icons.color_lens_outlined,
         _ => Icons.play_arrow,
       };
