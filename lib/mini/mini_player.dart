@@ -170,8 +170,11 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   Offset get _rawPos =>
       _pos ?? MiniPhysics.defaultPos(_screen, _w, _h, _safe);
 
+  // While fingers are pinching, the card may overhang the screen freely: no edge arrow, no parking.
+  bool get _pinching => _multi && _gestureActive;
+
   double _overhang(Offset pos) {
-    if (_parked) return 0;
+    if (_parked || _pinching) return 0;
     final screenW = _screen.width;
     if (pos.dx < 0) return -pos.dx;
     if (pos.dx + _w > screenW) return pos.dx + _w - screenW;
@@ -185,6 +188,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       if (pos.dx + _w / 2 < screenW / 2) return -1;
       return 1;
     }
+    if (_pinching) return 0;
     final screenW = _screen.width;
     if (pos.dx < 0) return -1;
     if (pos.dx + _w > screenW) return 1;
@@ -380,16 +384,14 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     }
     if ((focal - _gStartFocal).distance > _slop) _moved = true;
 
-    // Pinch: the card scales by exactly how much the fingers spread, and the point of the card
-    // that was under the fingers stays under them. No fixed ratio limits and no rubber band while
-    // the fingers are down; the card may only not outgrow the screen or shrink below its controls.
-    // _settle() brings it back into the safe zone when the last finger lifts.
+    // Pinch: the card scales by exactly how much the fingers spread, with no upper limit, and the
+    // point of the card that was under the fingers stays under them. The only floor is one touch
+    // slop (a card narrower than a fingertip is meaningless). When the last finger lifts,
+    // _settle() eases the card back to a legal size and position.
     var targetW = _startW;
     if (_fingers.length >= 2) {
       _moved = true;
-      final hi = MiniPhysics.pinchMaxW(_screen, _video);
-      final lo = math.min(MiniGeom.minW, hi);
-      targetW = (_startW * (_span / _baseSpan)).clamp(lo, hi).toDouble();
+      targetW = math.max(_startW * (_span / _baseSpan), _slop);
     }
     final scale = _startW == 0 ? 1.0 : targetW / _startW;
     final newPos = focal - _parentOrigin - _anchorInWidget * scale;
@@ -509,13 +511,19 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
         _parkSide = side;
       });
     } else {
-      to = MiniPhysics.edgeTarget(fromPos, settledW, settledH, safe);
+      // After a pinch the card may be far bigger than it will rest, so pick the side and row from
+      // where its centre is, not from its (possibly far off-screen) corner.
+      final fromH = MiniPhysics.boxFor(_w, video).height;
+      final from = _multi
+          ? fromPos + Offset((_w - settledW) / 2, (fromH - settledH) / 2)
+          : fromPos;
+      to = MiniPhysics.edgeTarget(from, settledW, settledH, safe);
       setState(() {
         _parked = false;
         _parkSide = 0;
       });
     }
-    final dist = (to - fromPos).distance;
+    final dist = math.max((to - fromPos).distance, (settledW - _w).abs());
     final ms = (220 + dist * 0.45).clamp(220, 700).round();
     _animate(fromPos, to, _w, settledW, ms, () {
       _pos = to;

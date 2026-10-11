@@ -75,14 +75,6 @@ class MiniPhysics {
     return w.clamp(lo, hi).toDouble();
   }
 
-  /// Widest the card may get while fingers are pinching it: whatever still fits the screen,
-  /// derived from the real area and the video shape (not a fixed size).
-  static double pinchMaxW(Size area, [Size? video]) {
-    final ar = aspect(video ?? videoSize());
-    final fromH = math.max(0.0, area.height - MiniGeom.barH) * ar;
-    return math.max(MiniGeom.minW, math.min(area.width, fromH));
-  }
-
   /// Rectangle (in [area] coordinates) where the mini player may rest.
   /// [area] already excludes the bottom navigation bar and the left / right
   /// system insets, because it is measured from the Scaffold body.
