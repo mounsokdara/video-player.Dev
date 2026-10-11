@@ -23,6 +23,9 @@ class MiniGeom {
   static const parkT = 0.6;
   static const rubber = 0.35;
   static const tapSlop = 5.0;
+  // Smallest finger spread used as the pinch baseline (stops a tiny starting spread from
+  // turning a small finger move into a huge resize).
+  static const minPinchSpan = 24.0;
 }
 
 class MiniPhysics {

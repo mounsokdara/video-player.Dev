@@ -58,6 +58,9 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _wasPlayingBeforePark = false;
   bool _moved = false;
   bool _gestureActive = false;
+  // A second finger joined this gesture. A pinch must never park or dismiss the card,
+  // only a single-finger drag may do that.
+  bool _multi = false;
 
   // Touch state. Raw pointers only: no gesture arena, no scale recognizer.
   final Map<int, Offset> _fingers = <int, Offset>{};
@@ -328,7 +331,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _startPos = _rawPos;
     _parentOrigin = cardGlobal - _startPos;
     _anchorInWidget = _focal - _parentOrigin - _startPos;
-    _baseSpan = _span;
+    _baseSpan = math.max(_span, MiniGeom.minPinchSpan);
   }
 
   void _onFingerDown(PointerDownEvent e, {required bool onCard}) {
@@ -341,6 +344,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       _gestureActive = true;
       _moved = false;
       _gStartFocal = e.position;
+      _multi = false;
       _downOnControl = onCard && control;
       _dragArmed = !_downOnControl; // a button press only turns into a drag after the slop
       _capture.value = true;
@@ -354,6 +358,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       }
     } else {
       _moved = true;
+      _multi = true;
       _dragArmed = true;
       DeveloperLog.append('mini: finger ${_fingers.length} down${onCard ? '' : ' outside the card'}');
     }
@@ -376,10 +381,23 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       _moved = true;
       final hi = MiniPhysics.maxWFor(_screen, _video);
       final lo = math.min(MiniGeom.minW, hi);
-      targetW = MiniPhysics.softClamp(_startW * (_span / _baseSpan), lo, hi);
+      final ratio = (_span / _baseSpan).clamp(0.25, 4.0).toDouble();
+      targetW = MiniPhysics.softClamp(_startW * ratio, lo, hi);
     }
-    final ratio = _startW == 0 ? 1.0 : targetW / _startW;
-    final newPos = focal - _parentOrigin - _anchorInWidget * ratio;
+    final scale = _startW == 0 ? 1.0 : targetW / _startW;
+    var newPos = focal - _parentOrigin - _anchorInWidget * scale;
+    if (_fingers.length >= 2) {
+      // Pinching: keep the whole card inside the content area (rubber band at the edges)
+      // instead of letting it fly off screen under the status bar or the side.
+      final safe = _safe;
+      final h = MiniPhysics.boxFor(targetW, _video).height;
+      final maxX = math.max(safe.left, safe.right - targetW);
+      final maxY = math.max(safe.top, safe.bottom - h);
+      newPos = Offset(
+        MiniPhysics.softClamp(newPos.dx, safe.left, maxX),
+        MiniPhysics.softClamp(newPos.dy, safe.top, maxY),
+      );
+    }
     setState(() {
       _w = targetW;
       _pos = newPos;
@@ -425,6 +443,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   void _onArrowPanStart(DragStartDetails _) {
     if (_dismissed) return;
     _anim.stop();
+    _multi = false;
     final wasParked = _parked;
     final oldSide = _parkSide;
     final effectiveSide = oldSide != 0 ? oldSide : _sideFor(_rawPos);
@@ -466,7 +485,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     final safe = _safe;
     final dismissThresholdY = screen.height - (settledH * 0.4);
 
-    if (fromPos.dy >= dismissThresholdY) {
+    if (!_multi && fromPos.dy >= dismissThresholdY) {
       _pauseForPark();
       final targetY = screen.height + 20;
       setState(() {
@@ -483,7 +502,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     final overhang = _overhang(fromPos);
     final full = MiniGeom.parkT * settledW;
     late final Offset to;
-    if (overhang >= full) {
+    if (!_multi && overhang >= full) {
       final side = fromPos.dx < 0 ? -1 : 1;
       _pauseForPark();
       final targetX = side < 0 ? -settledW : screen.width;
