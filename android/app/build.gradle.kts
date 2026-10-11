@@ -20,6 +20,19 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val allAbis = listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+val abiByPlatform = mapOf(
+    "android-arm" to "armeabi-v7a",
+    "android-arm64" to "arm64-v8a",
+    "android-x64" to "x86_64",
+)
+val selectedAbis: List<String> = run {
+    val fromEnv = (System.getenv("ABI_FILTER") ?: "").split(" ", ",").filter { it.isNotBlank() }
+    val fromProp = (project.findProperty("target-platform") as String?)
+        ?.split(",")?.mapNotNull { abiByPlatform[it.trim()] } ?: emptyList()
+    if (fromEnv.isNotEmpty()) fromEnv else fromProp
+}
+
 android {
     namespace = "com.mounsokdara.video_player"
     compileSdk = 36
@@ -37,18 +50,13 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
 
-        // flutter build apk --target-platform ... only filters Flutter's own engine. Plugin libraries
-        // (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each split APK would be as
-        // big as the universal one.
-        val abiByPlatform = mapOf(
-            "android-arm" to "armeabi-v7a",
-            "android-arm64" to "arm64-v8a",
-            "android-x64" to "x86_64",
-        )
-        (project.findProperty("target-platform") as String?)?.let { platforms ->
-            val abis = platforms.split(",").mapNotNull { abiByPlatform[it.trim()] }
-            if (abis.isNotEmpty()) {
-                ndk { abiFilters.addAll(abis) }
+        // Plugin libraries (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each
+        // split APK would be as big as the universal one. The list comes from ABI_FILTER (set by the
+        // CI workflow) or, as a fallback, from the -Ptarget-platform property Flutter passes.
+        if (selectedAbis.isNotEmpty()) {
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(selectedAbis)
             }
         }
     }
@@ -67,6 +75,10 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // Belt and braces: drop every CPU that was not asked for, whatever the plugins bundle.
+            if (selectedAbis.isNotEmpty()) {
+                allAbis.filter { it !in selectedAbis }.forEach { excludes += "**/lib/$it/**" }
+            }
         }
     }
 

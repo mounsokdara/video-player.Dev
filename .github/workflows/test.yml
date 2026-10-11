@@ -77,6 +77,8 @@ jobs:
           echo "$KS_B64" | base64 -d > android/app/upload-keystore.jks
           printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' "$KS_PASS" "$KEY_PASS" "$KEY_ALIAS" > android/key.properties
       - name: Build release APK (${{ matrix.platforms }})
+        env:
+          ABI_FILTER: ${{ matrix.abis }}
         run: |
           set +e
           VER=$(cut -d+ -f1 version.txt | tr -d '[:space:]')
