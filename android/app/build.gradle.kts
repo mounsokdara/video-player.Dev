@@ -26,6 +26,9 @@ val abiByPlatform = mapOf(
     "android-arm64" to "arm64-v8a",
     "android-x64" to "x86_64",
 )
+// `flutter build apk --split-per-abi` (F-Droid) turns on Android's ABI splits itself. Setting ndk.abiFilters
+// on top of that makes Gradle fail with "Conflicting configuration", so the filter below is skipped then.
+val splitPerAbi: Boolean = project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
 val selectedAbis: List<String> = run {
     val fromEnv = (System.getenv("ABI_FILTER") ?: "").split(" ", ",").filter { it.isNotBlank() }
     val fromProp = (project.findProperty("target-platform") as String?)
@@ -53,7 +56,8 @@ android {
         // Plugin libraries (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each
         // split APK would be as big as the universal one. The list comes from ABI_FILTER (set by the
         // CI workflow) or, as a fallback, from the -Ptarget-platform property Flutter passes.
-        if (selectedAbis.isNotEmpty()) {
+        // With --split-per-abi the splits do this job (one APK per CPU, versionCode ABI*1000+base).
+        if (selectedAbis.isNotEmpty() && !splitPerAbi) {
             ndk {
                 abiFilters.clear()
                 abiFilters.addAll(selectedAbis)
