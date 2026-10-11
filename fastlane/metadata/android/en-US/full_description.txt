@@ -1,0 +1,33 @@
+Local-only Material 3 Android video player powered by libmpv (media_kit). All files stay on your device — no cloud, no tracking.
+
+<b>Library</b>
+• Scans internal storage, SD cards and USB/OTG drives
+• Optional hidden files and auto-refresh
+• Videos and Folders tabs with search, filters, bookmarks and pins
+• Sort by name, date, size, duration or folder
+• Copy, cut, paste, rename, delete and share
+
+<b>Player</b>
+• Hardware / software / auto decoder
+• Two player styles: bottom dialog sheet or YouTube-style watch page
+• Play modes: Order, Loop all, Repeat current, Shuffle, No autoplay
+• Resume from last position
+• Speed control with optional pitch shift
+• Double-tap seek, pinch zoom, brightness & volume gestures
+• Many screen modes (Fit, Zoom, Original, Stretch, 16:9, 4:3, 21:9…)
+• Picture-in-Picture and in-app mini player
+• Background playback with notification controls
+• A-B repeat, sleep timer, lock controls
+• Screenshot, color correction, night mode, extra dim
+
+<b>Audio</b>
+• 10-band equalizer with presets
+• Bass boost, surround and left/right balance
+
+<b>Theme & Accessibility</b>
+• Light / Dark / System + Material You dynamic color
+• High contrast, grayscale, invert, color-blind filters
+• Reduce motion, large controls, bold text
+• Live Caption support (requires downloading AI model)
+
+Created by Moun Sokdara.

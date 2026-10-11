@@ -1,0 +1,5 @@
+• Improved Material 3 design
+• Better library scanning and folder support
+• Equalizer, themes and accessibility options
+• Live Caption support
+• Many player and gesture improvements
