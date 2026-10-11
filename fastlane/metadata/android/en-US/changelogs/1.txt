@@ -1,0 +1,6 @@
+v1.0.0 (2026-09-15)
+• First release: local-only Material 3 video player on libmpv
+• Library: scans internal storage, SD cards and USB, search, filters, sort
+• Player: gestures, screen and rotation modes, A-B repeat, sleep timer
+• Mini player, picture-in-picture and background play
+• Ten-band equalizer, themes and accessibility options

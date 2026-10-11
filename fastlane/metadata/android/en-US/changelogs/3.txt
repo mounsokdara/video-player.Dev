@@ -1,0 +1,5 @@
+v1.0.2 (2026-09-28)
+• Added HDR render (not the best performing)
+• Added FFmpeg module
+• More debug log toggles: live video overlay, playback, media, render, decoder and timing info
+• Log player, gesture and lifecycle events

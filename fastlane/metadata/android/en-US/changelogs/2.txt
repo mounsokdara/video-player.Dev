@@ -1,0 +1,7 @@
+v1.0.1 (2026-09-16)
+• Whole video row is tappable again, checkbox on the right
+• Open-from / Pick in other apps opens the in-app video picker
+• New player style: bottom sheet or YouTube watch page
+• One gesture at a time: pinch zoom no longer starts seek
+• Mini player scales to the screen, pinch resize no longer loops
+• Original size uses the real video pixels

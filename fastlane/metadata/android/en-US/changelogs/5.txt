@@ -1,0 +1,7 @@
+v1.0.2.1 (2026-10-04)
+• Better snackbar instead of the long wide default one
+• Floating seek preview, seek bar no longer jumps
+• More tab with Settings, Equalizer, Crash report and About
+• Large-screen sidebar and wider tablet grid
+• Mini player stays clear of the navigation bar
+• Transparent system navigation bar and many layout fixes
