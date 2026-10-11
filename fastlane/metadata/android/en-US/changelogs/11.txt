@@ -1,7 +1,0 @@
-• All files access is now requested only when you start a file operation
-• Removed unneeded audio and image media permissions
-• F-Droid build no longer offers the GitHub APK download
-• Fastlane description now lists network use
-• Live Caption (Accessibility): AI captions, model downloaded on demand
-• Mini player touch handling rewritten
-• Playlist auto-next fixes
