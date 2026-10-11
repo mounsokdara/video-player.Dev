@@ -166,14 +166,20 @@ def write_full(name, code, head, base, items, total):
     return path
 
 
+def read_highlights(name):
+    """Hand written bullets from changelog/highlights.txt, only for the version they were written for."""
+    hl = os.path.join(FULL_DIR, "highlights.txt")
+    if not os.path.exists(hl):
+        return None
+    lines = [l.strip() for l in open(hl, encoding="utf-8") if l.strip()]
+    if lines and lines[0].lower() == f"# v{name}".lower():
+        return [l.lstrip("•-* ").strip() for l in lines[1:]]
+    return None
+
+
 def fdroid_text(name, head, items):
     header = f"v{name} ({head['t']:%Y-%m-%d})"
-    hl = os.path.join(FULL_DIR, "highlights.txt")
-    bullets = None
-    if os.path.exists(hl):
-        lines = [l.strip() for l in open(hl, encoding="utf-8") if l.strip()]
-        if lines and lines[0].lower() == f"# v{name}".lower():  # only for the version it was written for
-            bullets = [l.lstrip("•-* ").strip() for l in lines[1:]]
+    bullets = read_highlights(name)
     if bullets is None:
         order = {"New": 0, "Fix": 1, "Changed": 2}
         bullets = [i["text"] for i in sorted(items, key=lambda i: order[i["kind"]]) if not i["text"].endswith("...")]
@@ -196,6 +202,10 @@ def write_fdroid(code, text):
 
 def write_release_notes(path, name, code, head, items):
     out = ["# Changelog", "", f"## {name}", ""]
+    bullets = read_highlights(name)
+    if bullets:  # a hand written list for this version wins over the commit-derived one
+        out += [f"- {b}" for b in bullets] + [""]
+        items = []
     for title, k in (("New features", "New"), ("Fixes", "Fix"), ("Changed", "Changed")):
         sel = [i for i in items if i["kind"] == k]
         if sel:

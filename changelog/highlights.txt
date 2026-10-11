@@ -1,4 +1,7 @@
 # v1.0.3
+• Added AI captions (not the best)
+• Added APK split builds
+• Fix Mini Player bugs
 • All files access is now requested only when you start a file operation
 • Removed unneeded audio and image media permissions
 • F-Droid build no longer offers the GitHub APK download
