@@ -1146,7 +1146,7 @@ class _EmptyLibrary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final granted = library.allFiles;
+    final granted = library.allFiles || library.permissionReady;
     final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
@@ -1167,7 +1167,7 @@ class _EmptyLibrary extends StatelessWidget {
               Text(
                 granted
                     ? 'Nothing playable turned up in internal storage, SD cards, or USB drives. Copy videos onto the device, then scan again.'
-                    : 'Grant all-files access so the player can read internal storage, SD cards, and USB drives.',
+                    : 'Allow video access so the player can read internal storage, SD cards, and USB drives.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: scheme.onSurfaceVariant),
               ),

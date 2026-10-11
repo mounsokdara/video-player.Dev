@@ -1,4 +1,4 @@
-Local-only Material 3 Android video player powered by libmpv (media_kit). All files stay on your device — no cloud, no tracking.
+Local-only Material 3 Android video player powered by libmpv (media_kit). Your videos stay on your device — no cloud, no tracking, no analytics.
 
 <b>Library</b>
 • Scans internal storage, SD cards and USB/OTG drives
@@ -28,6 +28,11 @@ Local-only Material 3 Android video player powered by libmpv (media_kit). All fi
 • Light / Dark / System + Material You dynamic color
 • High contrast, grayscale, invert, color-blind filters
 • Reduce motion, large controls, bold text
-• Live Caption support (requires downloading AI model)
+
+<b>Network</b>
+The app has no connection on start. It only contacts api.github.com when you open About (developer profile), the changelog page, or tap Check for update. Nothing else is sent.
+
+<b>Permissions</b>
+Video access is asked on start. All files access is asked only when you delete, rename, copy or move files.
 
 Created by Moun Sokdara.

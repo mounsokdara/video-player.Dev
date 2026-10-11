@@ -54,6 +54,7 @@ class LibraryService {
   }
 
   Future<bool> pasteInto(String dir) async {
+    if (!await requireAllFilesForOperation()) return false;
     final sources = clipPaths.isNotEmpty
         ? List<String>.from(clipPaths)
         : (clipPath == null || clipPath!.isEmpty ? <String>[] : [clipPath!]);
@@ -111,29 +112,24 @@ class LibraryService {
   Future<void> requestPermissions() async {
     await Permission.notification.request();
 
+    // Only the media read permission is requested at start. "All files access" is requested
+    // later, when the user starts a file operation (delete / rename / copy / move) or opts in.
     final sdk = await AndroidBridge.sdkInt();
-    if (sdk >= 30) {
-      // Android 11+: ask for All files access instead of the media prompt.
-      allFiles = await AndroidBridge.hasAllFilesAccess();
-      if (!allFiles && !_askedAllFiles) {
-        _askedAllFiles = true;
-        await AndroidBridge.requestAllFilesAccess();
-        allFiles = await AndroidBridge.hasAllFilesAccess();
-      }
-      if (!allFiles) {
-        // All files access not granted: fall back to the regular storage / media read permission
-        // (READ_MEDIA_VIDEO on Android 13+, READ/WRITE_EXTERNAL_STORAGE on Android 11-12).
-        final fallback = sdk >= 33 ? Permission.videos : Permission.storage;
-        final status = await fallback.request();
-        permissionReady = status.isGranted || status.isLimited;
-      }
-    } else {
-      // Android 10 and older have no All files permission; use legacy storage.
-      await Permission.storage.request();
-      allFiles = await AndroidBridge.hasAllFilesAccess();
-    }
+    final base = sdk >= 33 ? Permission.videos : Permission.storage;
+    final status = await base.request();
+    permissionReady = status.isGranted || status.isLimited;
+    allFiles = await AndroidBridge.hasAllFilesAccess();
     permissionReady = allFiles || permissionReady;
     manageMedia = await AndroidBridge.canManageMedia();
+  }
+
+  /// Asks for All files access the first time a file operation needs it. Returns whether it is granted.
+  Future<bool> requireAllFilesForOperation() async {
+    allFiles = await AndroidBridge.hasAllFilesAccess();
+    if (allFiles) return true;
+    await AndroidBridge.requestAllFilesAccess();
+    allFiles = await AndroidBridge.hasAllFilesAccess();
+    return allFiles;
   }
 
   Future<void> ensureAllFiles() async {
@@ -482,6 +478,7 @@ class LibraryService {
   }
 
   Future<bool> deleteVideos(List<VideoItem> items) async {
+    if (items.isNotEmpty && !await requireAllFilesForOperation()) return false;
     if (items.isEmpty) return true;
     final paths = items.map((v) => v.path).where((p) => p.isNotEmpty).toList();
     await AndroidBridge.deletePaths(paths);
@@ -509,6 +506,7 @@ class LibraryService {
   /// Renames a file or folder on disk. The name shown is always the basename of the real path, never a
   /// stored copy, and everything keyed by path (bookmarks, pins, resume, speed) follows the new path.
   Future<String?> renameEntry(String path, String newName) async {
+    if (!await requireAllFilesForOperation()) return null;
     final dest = await AndroidBridge.renamePath(path, newName);
     if (dest == null) return null;
     _movePrefix(path, dest);
@@ -560,6 +558,7 @@ class LibraryService {
   }
 
   Future<bool> deletePath(String path) async {
+    if (!await requireAllFilesForOperation()) return false;
     final ok = await AndroidBridge.deletePath(path);
     videos.removeWhere((v) => v.path == path);
     _rebuildFolders();

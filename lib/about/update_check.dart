@@ -4,6 +4,9 @@ import 'package:video_player_app/about/about_info.dart';
 import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/release_notes.dart';
 
+/// Set with --dart-define=FDROID=true: F-Droid builds never point users at the differently signed GitHub APK.
+const bool kFDroidBuild = bool.fromEnvironment('FDROID');
+
 /// "Check For Update": asks the GitHub releases for the newest version and compares it with the
 /// installed one.
 Future<void> checkForUpdate(BuildContext context) async {
@@ -72,9 +75,9 @@ Future<void> checkForUpdate(BuildContext context) async {
         FilledButton(
           onPressed: () {
             Navigator.pop(ctx);
-            openExternal(latest.apkUrl ?? latest.url);
+            openExternal(kFDroidBuild ? latest.url : (latest.apkUrl ?? latest.url));
           },
-          child: Text(latest.apkUrl != null ? 'Download' : 'View release'),
+          child: Text(!kFDroidBuild && latest.apkUrl != null ? 'Download' : 'View release'),
         ),
       ],
     ),
