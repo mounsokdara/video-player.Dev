@@ -1,9 +1,9 @@
 Video Player v1.0.3  (versionCode 26101151)
-Time snap : 2026-10-11 03:11 UTC | 10:11 ICT   (time of the newest commit)
-Commit    : 18e867d
+Time snap : 2026-10-11 03:26 UTC | 10:26 ICT   (time of the newest commit)
+Commit    : 5e122b5
 Since     : 04db9da  1.0.2.4: publish tested dev build (last commit covered by the v1.0.2.1 release notes)
 ----------------------------------------------------------------
-CHANGES, newest first (16 user facing, 39 internal commits left out)
+CHANGES, newest first (16 user facing, 40 internal commits left out)
 
 [2026-10-11 03:11 UTC | 10:11 ICT] 18e867d  Changed: Mini player pinch: unlimited rescale while fingers are down, smooth timed return on...
 [2026-10-11 02:58 UTC | 09:58 ICT] 5f8df5c  Changed: Mini player pinch: follow the real finger points, drop hard-coded span floor, ratio clamp...
