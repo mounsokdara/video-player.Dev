@@ -1,4 +1,4 @@
-v1.0.3 (2026-10-11)
+# v1.0.3
 • All files access is now requested only when you start a file operation
 • Removed unneeded audio and image media permissions
 • F-Droid build no longer offers the GitHub APK download

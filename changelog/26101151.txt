@@ -1,0 +1,19 @@
+Video Player v1.0.3  (versionCode 26101151)
+Time snap : 2026-10-11 02:04 UTC | 09:04 ICT   (time of the newest commit)
+Commit    : 3edc180
+Since     : 04db9da  1.0.2.4: publish tested dev build (last commit covered by the v1.0.2.1 release notes)
+----------------------------------------------------------------
+CHANGES, newest first (12 user facing, 39 internal commits left out)
+
+[2026-10-11 02:04 UTC | 09:04 ICT] d607766  Changed: Mini player: pinching keeps the card on screen and never parks or dismisses it
+[2026-10-11 01:00 UTC | 08:00 ICT] 99ebec0  Fix: F-Droid review fixes: lazy all-files access, drop READ_MEDIA_AUDIO/IMAGES, FDROID...
+[2026-10-10 10:59 UTC | 17:59 ICT] 37149cf  Changed: Mini player: rewrite touch handling from scratch with raw pointers
+[2026-10-10 05:18 UTC | 12:18 ICT] 284b617  Changed: Mini player: second finger can land anywhere and joins the pinch
+[2026-10-10 00:09 UTC | 07:09 ICT] 6bcc731  Fix: Fix playlist skipping: only auto-advance after the video really played
+[2026-10-09 10:42 UTC | 17:42 ICT] b461d1a  New: Live Caption: per-video cache saved phrase by phrase, extraction progress, captions...
+[2026-10-09 06:09 UTC | 13:09 ICT] 000e492  Fix: Live Caption: fix stuck loading
+[2026-10-09 05:43 UTC | 12:43 ICT] fde2c6d  New: Live Caption
+[2026-10-06 22:17 UTC | 05:17 ICT] fe40564  Changed: Rename: show the real file name
+[2026-10-06 21:57 UTC | 04:57 ICT] 2803fce  Changed: Rename: single message 'Invalid File Formating double check your file name'
+[2026-10-06 21:48 UTC | 04:48 ICT] af800e1  Changed: Snackbar: do not add the system bar height when it is shown above the bottom navigation...
+[2026-10-06 21:42 UTC | 04:42 ICT] 49bc2f3  Changed: Rename: block invalid names - files must keep a video extension

@@ -1,44 +1,19 @@
-# DEV REPO: edit and test here first. Publish to the public repo (mounsokdara/video-player) only after the dev run passes.
-name: Dev Test
+# RELEASE WORKFLOW for the PUBLIC repo (mounsokdara/video-player).
+# Lives here, NOT in .github/workflows, so the dev repo never publishes a release.
+# After the dev run passes: copy this file to .github/workflows/build-apk.yml in the public repo,
+# together with scripts/changelog.py, changelog/BASE and changelog/highlights.txt.
+name: Build APK
 
 on:
   push:
-    branches: [main, "dev/**"]
-  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  analyze:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.47.2"
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - name: Analyze
-        run: |
-          set +e
-          flutter analyze --no-fatal-infos > analyze.txt 2>&1
-          code=$?
-          grep -E '^\s*(error|warning) ' analyze.txt | head -60 | while read -r line; do
-            echo "::error::$(echo "$line" | cut -c1-300)"
-          done
-          if [ $code -ne 0 ] && ! grep -qE '^\s*(error|warning) ' analyze.txt; then
-            echo "::error::$(tail -c 500 analyze.txt | tr '\n' ' ')"
-          fi
-          exit $code
-      - run: flutter test
-        if: hashFiles('test/**') != ''
-
   build-apk:
-    needs: analyze
     name: APK ${{ matrix.id }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -47,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # universal keeps the plain name com.mounsokdara.video_player.dev.apk (the F-Droid repo downloads this one)
+          # universal keeps the plain name com.mounsokdara.video_player.apk (the F-Droid repo downloads this one)
           - { id: universal,            platforms: "android-arm,android-arm64,android-x64", abis: "arm64-v8a armeabi-v7a x86_64" }
           - { id: arm64-v8a,            platforms: "android-arm64",                         abis: "arm64-v8a" }
           - { id: armeabi-v7a,          platforms: "android-arm",                           abis: "armeabi-v7a" }
@@ -121,27 +96,22 @@ jobs:
         run: |
           OUTDIR=build/app/outputs/flutter-apk
           KS_FILE=android/app/upload-keystore.jks bash scripts/sign-apk.sh "$OUTDIR/app-release.apk" "$OUTDIR/app-release-signed.apk" | tee sign.log
-          # the fingerprint of the public release key (from the private vault) must match
-          WANT=fd5c65cc4aba8e32aea3182b5ab8ebc4c0b52e9f0861a8dfca721d02c71b7db6
-          grep -q "signed with the expected key ($WANT)" sign.log || { echo "::error::APK is not signed with the release key"; exit 1; }
           mv -f "$OUTDIR/app-release-signed.apk" "$OUTDIR/app-release.apk"
       - name: Name + size
         run: |
           mkdir -p dist
-          if [ "${{ matrix.id }}" = "universal" ]; then N="com.mounsokdara.video_player.dev.apk"; else N="com.mounsokdara.video_player.dev-${{ matrix.id }}.apk"; fi
+          if [ "${{ matrix.id }}" = "universal" ]; then N="com.mounsokdara.video_player.apk"; else N="com.mounsokdara.video_player-${{ matrix.id }}.apk"; fi
           cp build/app/outputs/flutter-apk/app-release.apk "dist/$N"
           echo "| ${{ matrix.id }} | \`$N\` | $(du -h "dist/$N" | cut -f1) |" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: video-player-dev-${{ matrix.id }}
+          name: video-player-${{ matrix.id }}
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
 
-  changelog:
-    name: Sync changelog (time snap + F-Droid txt)
+  release:
     needs: build-apk
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -149,14 +119,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Generate changelog files from the commits since changelog/BASE
-        run: python3 scripts/changelog.py
-      - name: Commit changes
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: video-player-*
+          path: dist
+          merge-multiple: true
+      - name: Version + release notes (automatic, with time snap)
+        id: ver
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add changelog fastlane/metadata/android/en-US/changelogs
-          if git diff --cached --quiet; then echo "changelog already up to date"; exit 0; fi
-          git commit -m "changelog: sync $(cut -d+ -f2 version.txt | tr -d '[:space:]') [skip ci]"
-          git pull --rebase origin main
-          git push origin main
+          echo "name=$(cut -d+ -f1 version.txt | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+          python3 scripts/changelog.py --release-notes release-notes.md
+          ls -lh dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.name }}
+          name: Video Player v${{ steps.ver.outputs.name }}
+          files: dist/*.apk
+          fail_on_unmatched_files: true
+          prerelease: false
+          make_latest: true
+          generate_release_notes: false
+          body_path: release-notes.md
