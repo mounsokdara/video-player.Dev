@@ -139,7 +139,7 @@ jobs:
           retention-days: 14
 
   changelog:
-    name: Sync changelog (time snap + F-Droid txt)
+    name: Sync F-Droid changelog (fastlane only)
     needs: build-apk
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -149,13 +149,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Generate changelog files from the commits since changelog/BASE
+      - name: Make the F-Droid changelog (a hand written one for this versionCode is kept)
         run: python3 scripts/changelog.py
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add changelog fastlane/metadata/android/en-US/changelogs
+          git add fastlane/metadata/android/en-US/changelogs
           if git diff --cached --quiet; then echo "changelog already up to date"; exit 0; fi
           git commit -m "changelog: sync $(cut -d+ -f2 version.txt | tr -d '[:space:]') [skip ci]"
           git pull --rebase origin main
