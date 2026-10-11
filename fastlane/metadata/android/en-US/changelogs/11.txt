@@ -1,0 +1,7 @@
+v1.0.3.5 (11 Oct 2026)
+• All files access is now requested only when you start a file operation
+• Removed unneeded audio and image media permissions
+• F-Droid build no longer offers the GitHub APK download
+• Live Caption (added 9 Oct): AI captions, model downloaded on demand
+• Mini player touch handling rewritten (10 Oct)
+• Playlist auto-next fixes
