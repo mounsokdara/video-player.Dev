@@ -1,0 +1,20 @@
+Video Player v1.0.2
+Published : 2026-09-28 06:00 UTC  (2026-09-28 13:00 ICT)
+Source    : https://github.com/mounsokdara/video-player/releases/tag/v1.0.2
+------------------------------------------------------------
+
+Changelog
+1.0.2
+
+- Added HDR Render (not the best performing).
+- Added FFmpeg module.
+- Added more debug log toggles:
+  - VideoLogOverlay: live yellow diagnostic text over the video.
+  - Overlay: playback state: position, duration, play/pause, buffering, size, and FPS.
+  - Overlay: media info: pixel format, transfer, primaries, matrix, and HDR detection.
+  - Overlay: render info: render mode and active video filter.
+  - Overlay: decoder info: hardware/software decoder information.
+  - Overlay: timing / screen: display resolution and refresh rate.
+  - Log player events: open, play, pause, seek, repeat, close, and tempo events.
+  - Log gesture events: tap, seek, pinch, brightness, and volume gesture events.
+  - Log lifecycle events: player/app background and resume transitions.
