@@ -17,7 +17,6 @@ jobs:
     name: APK ${{ matrix.id }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
@@ -28,8 +27,7 @@ jobs:
           - { id: armeabi-v7a,          platforms: "android-arm",                           abis: "armeabi-v7a" }
           - { id: arm64-v8a_armeabi-v7a, platforms: "android-arm,android-arm64",            abis: "arm64-v8a armeabi-v7a" }
           - { id: x86_64,               platforms: "android-x64",                           abis: "x86_64" }
-          # Flutter ahead-of-time release builds do not exist for 32-bit x86; kept as a try so the log says it.
-          - { id: x86,                  platforms: "android-x86",                           abis: "x86", experimental: true }
+          # No 32-bit x86: Flutter rejects android-x86 for release builds (the build step exits with code 64).
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

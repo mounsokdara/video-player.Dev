@@ -36,6 +36,21 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
+
+        // flutter build apk --target-platform ... only filters Flutter's own engine. Plugin libraries
+        // (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each split APK would be as
+        // big as the universal one.
+        val abiByPlatform = mapOf(
+            "android-arm" to "armeabi-v7a",
+            "android-arm64" to "arm64-v8a",
+            "android-x64" to "x86_64",
+        )
+        (project.findProperty("target-platform") as String?)?.let { platforms ->
+            val abis = platforms.split(",").mapNotNull { abiByPlatform[it.trim()] }
+            if (abis.isNotEmpty()) {
+                ndk { abiFilters.addAll(abis) }
+            }
+        }
     }
 
     signingConfigs {
