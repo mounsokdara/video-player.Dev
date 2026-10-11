@@ -21,11 +21,6 @@ class MiniGeom {
   static const arrowMaxW = 28.0;
   static const arrowH = 96.0;
   static const parkT = 0.6;
-  static const rubber = 0.35;
-  static const tapSlop = 5.0;
-  // Smallest finger spread used as the pinch baseline (stops a tiny starting spread from
-  // turning a small finger move into a huge resize).
-  static const minPinchSpan = 24.0;
 }
 
 class MiniPhysics {
@@ -80,10 +75,12 @@ class MiniPhysics {
     return w.clamp(lo, hi).toDouble();
   }
 
-  static double softClamp(double v, double lo, double hi, [double k = MiniGeom.rubber]) {
-    if (v < lo) return lo - (lo - v) * k;
-    if (v > hi) return hi + (v - hi) * k;
-    return v;
+  /// Widest the card may get while fingers are pinching it: whatever still fits the screen,
+  /// derived from the real area and the video shape (not a fixed size).
+  static double pinchMaxW(Size area, [Size? video]) {
+    final ar = aspect(video ?? videoSize());
+    final fromH = math.max(0.0, area.height - MiniGeom.barH) * ar;
+    return math.max(MiniGeom.minW, math.min(area.width, fromH));
   }
 
   /// Rectangle (in [area] coordinates) where the mini player may rest.

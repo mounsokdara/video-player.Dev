@@ -70,6 +70,9 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _dragArmed = true;
   Offset _gStartFocal = Offset.zero;
   double _baseSpan = 0;
+  // Movement the platform itself treats as "a finger moved" (tap vs drag, and the smallest
+  // spread a pinch may start from). Read from the device in build, never a fixed number.
+  double _slop = kTouchSlop;
 
   bool _arrowDragging = false;
   int _dragSide = 0;
@@ -331,7 +334,8 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _startPos = _rawPos;
     _parentOrigin = cardGlobal - _startPos;
     _anchorInWidget = _focal - _parentOrigin - _startPos;
-    _baseSpan = math.max(_span, MiniGeom.minPinchSpan);
+    // The real spread at this moment. Only the platform touch slop keeps it away from zero.
+    _baseSpan = math.max(_span, _slop);
   }
 
   void _onFingerDown(PointerDownEvent e, {required bool onCard}) {
@@ -370,34 +374,25 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _fingers[e.pointer] = e.position;
     final focal = _focal;
     if (!_dragArmed) {
-      if ((focal - _gStartFocal).distance <= MiniGeom.tapSlop) return;
+      if ((focal - _gStartFocal).distance <= _slop) return;
       _dragArmed = true;
       _rebase(); // start following from here, no jump
     }
-    if ((focal - _gStartFocal).distance > MiniGeom.tapSlop) _moved = true;
+    if ((focal - _gStartFocal).distance > _slop) _moved = true;
 
+    // Pinch: the card scales by exactly how much the fingers spread, and the point of the card
+    // that was under the fingers stays under them. No fixed ratio limits and no rubber band while
+    // the fingers are down; the card may only not outgrow the screen or shrink below its controls.
+    // _settle() brings it back into the safe zone when the last finger lifts.
     var targetW = _startW;
-    if (_fingers.length >= 2 && _baseSpan > 0) {
+    if (_fingers.length >= 2) {
       _moved = true;
-      final hi = MiniPhysics.maxWFor(_screen, _video);
+      final hi = MiniPhysics.pinchMaxW(_screen, _video);
       final lo = math.min(MiniGeom.minW, hi);
-      final ratio = (_span / _baseSpan).clamp(0.25, 4.0).toDouble();
-      targetW = MiniPhysics.softClamp(_startW * ratio, lo, hi);
+      targetW = (_startW * (_span / _baseSpan)).clamp(lo, hi).toDouble();
     }
     final scale = _startW == 0 ? 1.0 : targetW / _startW;
-    var newPos = focal - _parentOrigin - _anchorInWidget * scale;
-    if (_fingers.length >= 2) {
-      // Pinching: keep the whole card inside the content area (rubber band at the edges)
-      // instead of letting it fly off screen under the status bar or the side.
-      final safe = _safe;
-      final h = MiniPhysics.boxFor(targetW, _video).height;
-      final maxX = math.max(safe.left, safe.right - targetW);
-      final maxY = math.max(safe.top, safe.bottom - h);
-      newPos = Offset(
-        MiniPhysics.softClamp(newPos.dx, safe.left, maxX),
-        MiniPhysics.softClamp(newPos.dy, safe.top, maxY),
-      );
-    }
+    final newPos = focal - _parentOrigin - _anchorInWidget * scale;
     setState(() {
       _w = targetW;
       _pos = newPos;
@@ -593,6 +588,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   Widget _buildOverlay(BuildContext context) {
     _bind();
+    _slop = MediaQuery.gestureSettingsOf(context).touchSlop ?? kTouchSlop;
     final pos = _rawPos;
     final side = _sideFor(pos);
     final arrowW = _arrowWidthFor(pos);
