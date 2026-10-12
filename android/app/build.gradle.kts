@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -56,7 +57,7 @@ android {
         // Plugin libraries (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each
         // split APK would be as big as the universal one. The list comes from ABI_FILTER (set by the
         // CI workflow) or, as a fallback, from the -Ptarget-platform property Flutter passes.
-        // With --split-per-abi the splits do this job (one APK per CPU, versionCode ABI*1000+base).
+        // With --split-per-abi the splits do this job (one APK per CPU).
         if (selectedAbis.isNotEmpty() && !splitPerAbi) {
             ndk {
                 abiFilters.clear()
@@ -102,6 +103,19 @@ android {
             // R8 on, with proguard-rules.pro keeping everything except the unused Google Play wrappers (F-Droid).
             isMinifyEnabled = true
             isShrinkResources = false
+        }
+    }
+}
+
+// F-Droid ABI split: unique versionCode per ABI so clients always pick the highest installable one.
+// Order: armeabi-v7a < arm64-v8a < x86_64 (digits in the lowest place of versionCode).
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
+android.applicationVariants.configureEach {
+    val variant = this
+    variant.outputs.forEach { output ->
+        val abiVersionCode = abiCodes[output.filters.find { it.filterType == "ABI" }?.identifier]
+        if (abiVersionCode != null) {
+            (output as ApkVariantOutputImpl).versionCodeOverride = variant.versionCode * 10 + abiVersionCode
         }
     }
 }
