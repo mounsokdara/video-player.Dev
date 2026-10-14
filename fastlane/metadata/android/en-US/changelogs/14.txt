@@ -1,2 +1,0 @@
-v1.0.5 (2026-10-15)
-• Reproducible F-Droid build: same paths and JDK as F-Droid
