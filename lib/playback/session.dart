@@ -290,7 +290,7 @@ class PlaybackSession {
     );
     if (!c.value.isPlaying) {
       try {
-        await c.play();
+        await c.play(source: 'session');
       } catch (_) {}
     }
   }

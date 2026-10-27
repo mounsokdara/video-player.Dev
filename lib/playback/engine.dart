@@ -61,6 +61,14 @@ class PlaybackEngine extends ChangeNotifier {
   bool wantPlay = false;
   Future<void> _playChain = Future<void>.value();
   int _playSeq = 0;
+  DateTime _lastToggleAt = DateTime.fromMillisecondsSinceEpoch(0);
+  // Programmatic play/pause (media events, audio focus, notification) closer
+  // together than this are an echo loop, not a person. UI taps are never dropped.
+  static const _eventCooldown = Duration(milliseconds: 300);
+  // After the last toggle mpv catches up on queued frames and the clock runs
+  // fast; do not judge the clock until it has settled.
+  DateTime _guardHoldUntil = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _guardSettle = Duration(milliseconds: 1500);
   DateTime? _guardAt;
   Duration _guardPos = Duration.zero;
   static const _guardWindow = Duration(milliseconds: 900);
@@ -482,6 +490,10 @@ class PlaybackEngine extends ChangeNotifier {
 
   void _guardClock(Player player) {
     final now = DateTime.now();
+    if (now.isBefore(_guardHoldUntil)) {
+      _guardAt = null;
+      return;
+    }
     if (!player.state.playing || player.state.buffering || _seekTarget != null) {
       _guardAt = null;
       return;
@@ -526,19 +538,41 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> play() async {
-    DeveloperLog.player('play');
+  /// [source] is 'ui' for a person, anything else (e.g. 'media') for events
+  /// coming from the system. Non-UI calls that change nothing, or that arrive
+  /// right after another toggle, are dropped so they cannot ping-pong.
+  Future<void> play({String source = 'ui'}) async {
+    if (_skipToggle(true, source)) return;
+    DeveloperLog.player('play from=$source');
     _alive.add(this);
     await _setPlaying(true);
   }
 
-  Future<void> pause() async {
-    DeveloperLog.player('pause');
+  Future<void> pause({String source = 'ui'}) async {
+    if (_skipToggle(false, source)) return;
+    DeveloperLog.player('pause from=$source');
     await _setPlaying(false);
+  }
+
+  bool _skipToggle(bool on, String source) {
+    final player = _player;
+    if (_closed || player == null) return false;
+    final already = wantPlay == on && player.state.playing == on;
+    if (already) {
+      DeveloperLog.player('${on ? 'play' : 'pause'} from=$source ignored: already ${on ? 'playing' : 'paused'}');
+      return true;
+    }
+    if (source != 'ui' && DateTime.now().difference(_lastToggleAt) < _eventCooldown) {
+      DeveloperLog.player('${on ? 'play' : 'pause'} from=$source ignored: echo within ${_eventCooldown.inMilliseconds}ms');
+      return true;
+    }
+    return false;
   }
 
   Future<void> _setPlaying(bool on) {
     wantPlay = on;
+    _lastToggleAt = DateTime.now();
+    _guardHoldUntil = _lastToggleAt.add(_guardSettle);
     final seq = ++_playSeq;
     final run = _playChain.then((_) async {
       final player = _player;

@@ -108,6 +108,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   DateTime _leftTap = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _rightTap = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _midTap = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastTapToggle = DateTime.fromMillisecondsSinceEpoch(0);
   String _gesture = '';
   DateTime? _gestureAt;
   bool _sawTwo = false;
@@ -213,12 +214,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       if (e['type'] == 'media') {
         switch (e['action']) {
           case 'play':
+            final pc = vc;
+            if (pc == null || pc.intendedPlaying) return;
             unawaited(AndroidBridge.requestAudioFocus());
-            vc?.setVolume(1);
+            pc.setVolume(1);
             unawaited(AndroidBridge.setStereoVolume(appSettings.audioBalanceLeft, appSettings.audioBalanceRight));
-            unawaited(vc?.play() ?? Future<void>.value());
+            unawaited(pc.play(source: 'media'));
           case 'pause':
-            vc?.pause();
+            final pz = vc;
+            if (pz == null || !pz.intendedPlaying) return;
+            unawaited(pz.pause(source: 'media'));
           case 'duck':
             vc?.setVolume(0.2);
           case 'unduck':

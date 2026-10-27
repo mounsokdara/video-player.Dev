@@ -105,12 +105,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final c = PlaybackSession.controller;
       switch (action) {
         case 'play':
+          if (c == null || c.intendedPlaying) return;
           unawaited(AndroidBridge.requestAudioFocus());
-          c?.setVolume(1);
+          c.setVolume(1);
           unawaited(AndroidBridge.setStereoVolume(appSettings.audioBalanceLeft, appSettings.audioBalanceRight));
-          unawaited(c?.play() ?? Future<void>.value());
+          unawaited(c.play(source: 'media'));
         case 'pause':
-          c?.pause();
+          if (c == null || !c.intendedPlaying) return;
+          unawaited(c.pause(source: 'media'));
         case 'duck':
           c?.setVolume(0.2);
         case 'unduck':

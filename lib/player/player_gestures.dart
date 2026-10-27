@@ -319,6 +319,10 @@ extension PlayerGestures on _PlayerPageState {
       return;
     }
 
+    // A finger cannot tap faster than this; faster means a stuck/auto-click
+    // and flooding mpv with pause/play desyncs audio and video.
+    if (now.difference(_lastTapToggle) < const Duration(milliseconds: 150)) return;
+    _lastTapToggle = now;
     _midTap = now;
     _midOn = true;
     final playing = vc?.intendedPlaying ?? false;
