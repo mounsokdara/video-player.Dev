@@ -2050,9 +2050,18 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     setState(() {});
   }
 
-  void _togglePlay() {
+  /// Returns false when the toggle was dropped because it came too soon after
+  /// the previous one. Every path (button, gesture, FAB) goes through here, so
+  /// a flood of taps cannot flood mpv with pause/play.
+  bool _togglePlay() {
     final c = vc;
-    if (c == null) return;
+    if (c == null) return false;
+    final now = DateTime.now();
+    if (now.difference(_lastTapToggle) < const Duration(milliseconds: 150)) {
+      DeveloperLog.player('toggle dropped: ${now.difference(_lastTapToggle).inMilliseconds}ms since last');
+      return false;
+    }
+    _lastTapToggle = now;
     if (c.intendedPlaying) {
       unawaited(c.pause());
     } else {
@@ -2062,6 +2071,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     PlaybackSession.notePlayback(c, title: item.title, artist: item.folderName, force: true);
     setState(() {});
     _armHide();
+    return true;
   }
 
   String _stamp(Duration d) {

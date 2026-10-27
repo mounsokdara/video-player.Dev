@@ -279,10 +279,15 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     }());
   }
 
+  DateTime _lastToggle = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> _togglePlay() async {
     if (_dismissed) return;
     final c = PlaybackSession.controller;
     if (c == null) return;
+    final now = DateTime.now();
+    if (now.difference(_lastToggle) < const Duration(milliseconds: 150)) return;
+    _lastToggle = now;
     try {
       if (c.intendedPlaying) {
         _wasPlayingBeforePark = false;
