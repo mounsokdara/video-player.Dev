@@ -59,16 +59,12 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
-  Future<void> _playChain = Future<void>.value();
-  int _playSeq = 0;
-  DateTime _lastToggleAt = DateTime.fromMillisecondsSinceEpoch(0);
-  // Programmatic play/pause (media events, audio focus, notification) closer
-  // together than this are an echo loop, not a person. UI taps are never dropped.
-  static const _eventCooldown = Duration(milliseconds: 300);
-  // After the last toggle mpv catches up on queued frames and the clock runs
-  // fast; do not judge the clock until it has settled.
-  DateTime _guardHoldUntil = DateTime.fromMillisecondsSinceEpoch(0);
-  static const _guardSettle = Duration(milliseconds: 1500);
+  // Play/pause is state-driven, not event-driven: callers only set [wantPlay]
+  // and one reconcile loop drives mpv to it, one command at a time, waiting for
+  // mpv to confirm each before looking again. Any number of flips while mpv is
+  // busy collapse into the last one. No timers or cooldowns.
+  bool _reconciling = false;
+  Future<void>? _reconcileFuture;
   DateTime? _guardAt;
   Duration _guardPos = Duration.zero;
   static const _guardWindow = Duration(milliseconds: 900);
@@ -490,7 +486,7 @@ class PlaybackEngine extends ChangeNotifier {
 
   void _guardClock(Player player) {
     final now = DateTime.now();
-    if (now.isBefore(_guardHoldUntil)) {
+    if (_reconciling) {
       _guardAt = null;
       return;
     }
@@ -538,9 +534,8 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// [source] is 'ui' for a person, anything else (e.g. 'media') for events
-  /// coming from the system. Non-UI calls that change nothing, or that arrive
-  /// right after another toggle, are dropped so they cannot ping-pong.
+  /// [source] is only for the log ('ui', 'media', 'session'). A call that
+  /// already matches the intended state is a no-op.
   Future<void> play({String source = 'ui'}) async {
     if (_skipToggle(true, source)) return;
     DeveloperLog.player('play from=$source');
@@ -562,31 +557,50 @@ class PlaybackEngine extends ChangeNotifier {
       DeveloperLog.player('${on ? 'play' : 'pause'} from=$source ignored: already ${on ? 'playing' : 'paused'}');
       return true;
     }
-    if (source != 'ui' && DateTime.now().difference(_lastToggleAt) < _eventCooldown) {
-      DeveloperLog.player('${on ? 'play' : 'pause'} from=$source ignored: echo within ${_eventCooldown.inMilliseconds}ms');
-      return true;
-    }
     return false;
   }
 
   Future<void> _setPlaying(bool on) {
     wantPlay = on;
-    _lastToggleAt = DateTime.now();
-    _guardHoldUntil = _lastToggleAt.add(_guardSettle);
-    final seq = ++_playSeq;
-    final run = _playChain.then((_) async {
-      final player = _player;
-      if (seq != _playSeq || _closed || player == null) return;
-      _guardAt = null;
-      if (on) {
-        await _pauseOthers();
-        if (seq == _playSeq) await player.play();
-      } else {
-        await player.pause();
+    if (_reconciling) return _reconcileFuture!;
+    final f = _reconcile();
+    _reconcileFuture = f;
+    return f;
+  }
+
+  Future<void> _reconcile() async {
+    _reconciling = true;
+    try {
+      while (!_closed) {
+        final player = _player;
+        if (player == null) return;
+        final want = wantPlay;
+        if (player.state.playing == want) return;
+        _guardAt = null;
+        if (want) {
+          await _pauseOthers();
+          if (wantPlay != want) continue;
+          await player.play();
+        } else {
+          await player.pause();
+        }
+        await _confirmed(player, want);
       }
-    }).catchError((_) {});
-    _playChain = run;
-    return run;
+    } catch (_) {
+      // swallow: the next toggle starts a fresh reconcile
+    } finally {
+      _reconciling = false;
+      _guardAt = null;
+    }
+  }
+
+  /// Waits until mpv reports [want]. The timeout is only a safety net for an
+  /// mpv that never answers; it is not a rate limit.
+  Future<void> _confirmed(Player player, bool want) async {
+    if (player.state.playing == want) return;
+    try {
+      await player.stream.playing.firstWhere((p) => p == want).timeout(const Duration(seconds: 1));
+    } catch (_) {}
   }
 
   Future<void> _pauseOthers() async {

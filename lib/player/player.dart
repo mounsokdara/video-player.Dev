@@ -108,7 +108,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   DateTime _leftTap = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _rightTap = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _midTap = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime _lastTapToggle = DateTime.fromMillisecondsSinceEpoch(0);
   String _gesture = '';
   DateTime? _gestureAt;
   bool _sawTwo = false;
@@ -2050,18 +2049,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     setState(() {});
   }
 
-  /// Returns false when the toggle was dropped because it came too soon after
-  /// the previous one. Every path (button, gesture, FAB) goes through here, so
-  /// a flood of taps cannot flood mpv with pause/play.
+  /// Flips the intended state. The engine reconciles mpv to it, so spamming
+  /// this is safe: extra flips collapse into the last one.
   bool _togglePlay() {
     final c = vc;
     if (c == null) return false;
-    final now = DateTime.now();
-    if (now.difference(_lastTapToggle) < const Duration(milliseconds: 150)) {
-      DeveloperLog.player('toggle dropped: ${now.difference(_lastTapToggle).inMilliseconds}ms since last');
-      return false;
-    }
-    _lastTapToggle = now;
     if (c.intendedPlaying) {
       unawaited(c.pause());
     } else {
