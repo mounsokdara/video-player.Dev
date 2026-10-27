@@ -59,22 +59,10 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
-  // Play/pause is state-driven, not event-driven: callers only set [wantPlay]
-  // and one reconcile loop drives mpv to it, one command at a time, waiting for
-  // mpv to confirm each before looking again. Any number of flips while mpv is
-  // busy collapse into the last one. No timers or cooldowns.
-  bool _reconciling = false;
-  Future<void>? _reconcileFuture;
-  DateTime? _guardAt;
-  Duration _guardPos = Duration.zero;
-  static const _guardWindow = Duration(milliseconds: 900);
-  static const _guardSlack = 1.6;
-  static const _guardGrace = Duration(milliseconds: 400);
   String debugInfo = '';
   String? _codecWarn;
 
   bool get hasPlayer => _player != null && !_closed;
-  bool get intendedPlaying => wantPlay && !value.completed && !value.hasError;
   String get hwdecName => _hwdec ?? 'unknown';
 
   int _openSeq = 0;
@@ -153,7 +141,6 @@ class PlaybackEngine extends ChangeNotifier {
     await _applyHwdec(player, hwdec);
     await _resetPerFile(player);
     await _applyPitchCorrection(player, _pitchShift);
-    _guardAt = null;
     await player.open(Media(_mediaUri(path)), play: false);
     await _waitReady(player);
     final decoded = await _prepareRender(player);
@@ -173,7 +160,6 @@ class PlaybackEngine extends ChangeNotifier {
     DeveloperLog.player('tempo rate=$rate pitchShift=$pitchShift');
     _rate = rate.clamp(0.25, 8.0).toDouble();
     _pitchShift = pitchShift;
-    _guardAt = null;
     final player = _player;
     if (player == null) return;
     await _applyPitchCorrection(player, pitchShift);
@@ -484,40 +470,8 @@ class PlaybackEngine extends ChangeNotifier {
     return target;
   }
 
-  void _guardClock(Player player) {
-    final now = DateTime.now();
-    if (_reconciling) {
-      _guardAt = null;
-      return;
-    }
-    if (!player.state.playing || player.state.buffering || _seekTarget != null) {
-      _guardAt = null;
-      return;
-    }
-    final at = _guardAt;
-    if (at == null) {
-      _guardAt = now;
-      _guardPos = player.state.position;
-      return;
-    }
-    final wall = now.difference(at);
-    if (wall < _guardWindow) return;
-    final pos = player.state.position;
-    final from = _guardPos;
-    _guardAt = now;
-    _guardPos = pos;
-    final step = Duration(microseconds: (wall.inMicroseconds * _rate).round());
-    final allowed = Duration(microseconds: (step.inMicroseconds * _guardSlack).round()) + _guardGrace;
-    if (pos - from <= allowed) return;
-    final expected = from + step;
-    DeveloperLog.player('clock ran ahead ' + (pos - from).inMilliseconds.toString() + 'ms in ' + wall.inMilliseconds.toString() + 'ms, resync to ' + expected.inMilliseconds.toString() + 'ms');
-    _guardAt = null;
-    unawaited(seekTo(expected));
-  }
-
   void _emit(Player player) {
     if (value.hasError) return;
-    _guardClock(player);
     final size = _sizeOf(player);
     final ready = player.state.duration > Duration.zero || size.width > 1 || player.state.playing;
     final playing = player.state.playing;
@@ -534,73 +488,18 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// [source] is only for the log ('ui', 'media', 'session'). A call that
-  /// already matches the intended state is a no-op.
-  Future<void> play({String source = 'ui'}) async {
-    if (_skipToggle(true, source)) return;
-    DeveloperLog.player('play from=$source');
+  Future<void> play() async {
+    DeveloperLog.player('play');
+    wantPlay = true;
     _alive.add(this);
-    await _setPlaying(true);
+    await _pauseOthers();
+    await _player?.play();
   }
 
-  Future<void> pause({String source = 'ui'}) async {
-    if (_skipToggle(false, source)) return;
-    DeveloperLog.player('pause from=$source');
-    await _setPlaying(false);
-  }
-
-  bool _skipToggle(bool on, String source) {
-    final player = _player;
-    if (_closed || player == null) return false;
-    final already = wantPlay == on && player.state.playing == on;
-    if (already) {
-      DeveloperLog.player('${on ? 'play' : 'pause'} from=$source ignored: already ${on ? 'playing' : 'paused'}');
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> _setPlaying(bool on) {
-    wantPlay = on;
-    if (_reconciling) return _reconcileFuture!;
-    final f = _reconcile();
-    _reconcileFuture = f;
-    return f;
-  }
-
-  Future<void> _reconcile() async {
-    _reconciling = true;
-    try {
-      while (!_closed) {
-        final player = _player;
-        if (player == null) return;
-        final want = wantPlay;
-        if (player.state.playing == want) return;
-        _guardAt = null;
-        if (want) {
-          await _pauseOthers();
-          if (wantPlay != want) continue;
-          await player.play();
-        } else {
-          await player.pause();
-        }
-        await _confirmed(player, want);
-      }
-    } catch (_) {
-      // swallow: the next toggle starts a fresh reconcile
-    } finally {
-      _reconciling = false;
-      _guardAt = null;
-    }
-  }
-
-  /// Waits until mpv reports [want]. The timeout is only a safety net for an
-  /// mpv that never answers; it is not a rate limit.
-  Future<void> _confirmed(Player player, bool want) async {
-    if (player.state.playing == want) return;
-    try {
-      await player.stream.playing.firstWhere((p) => p == want).timeout(const Duration(seconds: 1));
-    } catch (_) {}
+  Future<void> pause() async {
+    DeveloperLog.player('pause');
+    wantPlay = false;
+    await _player?.pause();
   }
 
   Future<void> _pauseOthers() async {

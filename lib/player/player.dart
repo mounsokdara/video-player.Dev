@@ -213,16 +213,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       if (e['type'] == 'media') {
         switch (e['action']) {
           case 'play':
-            final pc = vc;
-            if (pc == null || pc.intendedPlaying) return;
             unawaited(AndroidBridge.requestAudioFocus());
-            pc.setVolume(1);
+            vc?.setVolume(1);
             unawaited(AndroidBridge.setStereoVolume(appSettings.audioBalanceLeft, appSettings.audioBalanceRight));
-            unawaited(pc.play(source: 'media'));
+            unawaited(vc?.play() ?? Future<void>.value());
           case 'pause':
-            final pz = vc;
-            if (pz == null || !pz.intendedPlaying) return;
-            unawaited(pz.pause(source: 'media'));
+            vc?.pause();
           case 'duck':
             vc?.setVolume(0.2);
           case 'unduck':
@@ -1575,7 +1571,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
 
   List<Widget> _chrome(PlaybackEngine? c, Size size, {required bool watch, required EdgeInsets pad}) {
     final dur = c?.value.duration ?? Duration.zero;
-    final playing = c?.intendedPlaying ?? false;
+    final playing = c?.value.isPlaying ?? false;
     final iconSize = appSettings.largeControls ? 40.0 : 32.0;
     final playSize = appSettings.largeControls ? 68.0 : 56.0;
     final wide = size.width >= 600;
@@ -2049,21 +2045,18 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     setState(() {});
   }
 
-  /// Flips the intended state. The engine reconciles mpv to it, so spamming
-  /// this is safe: extra flips collapse into the last one.
-  bool _togglePlay() {
+  void _togglePlay() {
     final c = vc;
-    if (c == null) return false;
-    if (c.intendedPlaying) {
-      unawaited(c.pause());
+    if (c == null) return;
+    if (c.value.isPlaying) {
+      c.pause();
     } else {
       unawaited(AndroidBridge.requestAudioFocus());
-      unawaited(c.play());
+      c.play();
     }
     PlaybackSession.notePlayback(c, title: item.title, artist: item.folderName, force: true);
     setState(() {});
     _armHide();
-    return true;
   }
 
   String _stamp(Duration d) {

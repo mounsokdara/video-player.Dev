@@ -284,7 +284,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     final c = PlaybackSession.controller;
     if (c == null) return;
     try {
-      if (c.intendedPlaying) {
+      if (c.value.isPlaying) {
         _wasPlayingBeforePark = false;
         await c.pause();
       } else {
