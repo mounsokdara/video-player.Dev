@@ -76,104 +76,94 @@ Future<void> showPlayerMoreSheet({
     () => showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: scheme.surface,
-      barrierColor: Colors.black54,
+      useSafeArea: true,
       builder: (ctx) {
-        final pad = SystemBars.rawOf(context);
-        return DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.86,
-            builder: (_, sc) {
-              return StatefulBuilder(builder: (ctx, ss) {
-                bool onFor(String id) => switch (id) {
-                      'background' => appSettings.backgroundPlay,
-                      'popup' => appSettings.autoMiniplayer,
-                      'night' => appSettings.nightMode,
-                      'mirror' => appSettings.mirror,
-                      'invert' => appSettings.invertColors,
-                      'navbar' => appSettings.alwaysHideNavBar,
-                      'caption' => appSettings.liveCaption,
-                      'bookmark' => item.bookmarked || appSettings.bookmarks.contains(item.path),
-                      _ => false,
-                    };
-                final seen = <String>{};
-                return Material(
-                  color: scheme.surface,
-                  child: ListView(
-                    controller: sc,
-                    padding: EdgeInsets.fromLTRB(pad.left, 0, pad.right, pad.bottom + 16),
-                    children: [
-                      ListTile(
-                        title: Text('More', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: scheme.onSurface)),
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.dashboard_customize_outlined, color: scheme.onSurface),
-                        title: Text('Organize quick actions', style: TextStyle(color: scheme.onSurface)),
-                        onTap: () async {
-                          Navigator.pop(ctx);
-                          await onOrganize();
-                        },
-                      ),
-                      for (final section in sections.entries) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                          child: Text(section.key, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700)),
-                        ),
-                        for (final id in section.value)
-                          if (AppSettings.allQuickActions.containsKey(id) && seen.add(id))
-                            toggles.contains(id)
-                                ? SwitchListTile(
-                                    secondary: Icon(playerActionIcon(id), color: scheme.onSurface),
-                                    title: Text(AppSettings.allQuickActions[id]!, style: TextStyle(color: scheme.onSurface)),
-                                    subtitle: playerActionSub(id, speed: speed, zoomScale: zoomScale) == null
-                                        ? null
-                                        : Text(
-                                            playerActionSub(id, speed: speed, zoomScale: zoomScale)!,
-                                            style: TextStyle(color: scheme.onSurfaceVariant),
-                                          ),
-                                    value: onFor(id),
-                                    onChanged: (_) async {
-                                      await onAction(id);
-                                      ss(() {});
-                                    },
-                                  )
-                                : ListTile(
-                                    leading: Icon(playerActionIcon(id), color: scheme.onSurface),
-                                    title: Text(AppSettings.allQuickActions[id]!, style: TextStyle(color: scheme.onSurface)),
-                                    subtitle: playerActionSub(id, speed: speed, zoomScale: zoomScale) == null
-                                        ? null
-                                        : Text(
-                                            playerActionSub(id, speed: speed, zoomScale: zoomScale)!,
-                                            style: TextStyle(color: scheme.onSurfaceVariant),
-                                          ),
-                                    onTap: () async {
-                                      Navigator.pop(ctx);
-                                      await onAction(id);
-                                    },
-                                  ),
-                      ],
-                      for (final e in AppSettings.allQuickActions.entries)
-                        if (seen.add(e.key))
-                          ListTile(
-                            leading: Icon(playerActionIcon(e.key), color: scheme.onSurface),
-                            title: Text(e.value, style: TextStyle(color: scheme.onSurface)),
-                            subtitle: playerActionSub(e.key, speed: speed, zoomScale: zoomScale) == null
-                                ? null
-                                : Text(
-                                    playerActionSub(e.key, speed: speed, zoomScale: zoomScale)!,
-                                    style: TextStyle(color: scheme.onSurfaceVariant),
-                                  ),
-                            onTap: () async {
-                              Navigator.pop(ctx);
-                              await onAction(e.key);
-                            },
-                          ),
-                    ],
+        return StatefulBuilder(builder: (ctx, ss) {
+          bool onFor(String id) => switch (id) {
+                'background' => appSettings.backgroundPlay,
+                'popup' => appSettings.autoMiniplayer,
+                'night' => appSettings.nightMode,
+                'mirror' => appSettings.mirror,
+                'invert' => appSettings.invertColors,
+                'navbar' => appSettings.alwaysHideNavBar,
+                'caption' => appSettings.liveCaption,
+                'bookmark' => item.bookmarked || appSettings.bookmarks.contains(item.path),
+                _ => false,
+              };
+          final seen = <String>{};
+          return SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 16),
+              children: [
+                ListTile(
+                  title: Text('More', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                ),
+                ListTile(
+                  leading: Icon(Icons.dashboard_customize_outlined, color: scheme.onSurface),
+                  title: Text('Organize quick actions', style: TextStyle(color: scheme.onSurface)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await onOrganize();
+                  },
+                ),
+                for (final section in sections.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(section.key, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700)),
                   ),
-                );
-              });
-            },
-        );
+                  for (final id in section.value)
+                    if (AppSettings.allQuickActions.containsKey(id) && seen.add(id))
+                      toggles.contains(id)
+                          ? SwitchListTile(
+                              secondary: Icon(playerActionIcon(id), color: scheme.onSurface),
+                              title: Text(AppSettings.allQuickActions[id]!, style: TextStyle(color: scheme.onSurface)),
+                              subtitle: playerActionSub(id, speed: speed, zoomScale: zoomScale) == null
+                                  ? null
+                                  : Text(
+                                      playerActionSub(id, speed: speed, zoomScale: zoomScale)!,
+                                      style: TextStyle(color: scheme.onSurfaceVariant),
+                                    ),
+                              value: onFor(id),
+                              onChanged: (_) async {
+                                await onAction(id);
+                                ss(() {});
+                              },
+                            )
+                          : ListTile(
+                              leading: Icon(playerActionIcon(id), color: scheme.onSurface),
+                              title: Text(AppSettings.allQuickActions[id]!, style: TextStyle(color: scheme.onSurface)),
+                              subtitle: playerActionSub(id, speed: speed, zoomScale: zoomScale) == null
+                                  ? null
+                                  : Text(
+                                      playerActionSub(id, speed: speed, zoomScale: zoomScale)!,
+                                      style: TextStyle(color: scheme.onSurfaceVariant),
+                                    ),
+                              onTap: () async {
+                                Navigator.pop(ctx);
+                                await onAction(id);
+                              },
+                            ),
+                ],
+                for (final e in AppSettings.allQuickActions.entries)
+                  if (seen.add(e.key))
+                    ListTile(
+                      leading: Icon(playerActionIcon(e.key), color: scheme.onSurface),
+                      title: Text(e.value, style: TextStyle(color: scheme.onSurface)),
+                      subtitle: playerActionSub(e.key, speed: speed, zoomScale: zoomScale) == null
+                          ? null
+                          : Text(
+                              playerActionSub(e.key, speed: speed, zoomScale: zoomScale)!,
+                              style: TextStyle(color: scheme.onSurfaceVariant),
+                            ),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await onAction(e.key);
+                      },
+                    ),
+              ],
+            ),
+          );
+        });
       },
     ),
   );

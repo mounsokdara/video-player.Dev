@@ -1572,7 +1572,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
 
   List<Widget> _chrome(PlaybackEngine? c, Size size, {required bool watch, required EdgeInsets pad}) {
     final dur = c?.value.duration ?? Duration.zero;
-    final playing = c?.value.isPlaying ?? false;
+    final playing = c?.intendedPlaying ?? false;
     final iconSize = appSettings.largeControls ? 40.0 : 32.0;
     final playSize = appSettings.largeControls ? 68.0 : 56.0;
     final wide = size.width >= 600;
@@ -2049,11 +2049,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   void _togglePlay() {
     final c = vc;
     if (c == null) return;
-    if (c.value.isPlaying) {
-      c.pause();
+    if (c.intendedPlaying) {
+      unawaited(c.pause());
     } else {
       unawaited(AndroidBridge.requestAudioFocus());
-      c.play();
+      unawaited(c.play());
     }
     PlaybackSession.notePlayback(c, title: item.title, artist: item.folderName, force: true);
     setState(() {});

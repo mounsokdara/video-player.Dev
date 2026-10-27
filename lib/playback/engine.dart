@@ -59,10 +59,21 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
+  final List<Completer<void>> _playWaiters = [];
+  Timer? _playTimer;
+  bool _playApplying = false;
+  DateTime _playAppliedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _playGap = Duration(milliseconds: 250);
+  DateTime? _guardAt;
+  Duration _guardPos = Duration.zero;
+  static const _guardWindow = Duration(milliseconds: 900);
+  static const _guardSlack = 1.6;
+  static const _guardGrace = Duration(milliseconds: 400);
   String debugInfo = '';
   String? _codecWarn;
 
   bool get hasPlayer => _player != null && !_closed;
+  bool get intendedPlaying => wantPlay && !value.completed && !value.hasError;
   String get hwdecName => _hwdec ?? 'unknown';
 
   int _openSeq = 0;
@@ -141,6 +152,7 @@ class PlaybackEngine extends ChangeNotifier {
     await _applyHwdec(player, hwdec);
     await _resetPerFile(player);
     await _applyPitchCorrection(player, _pitchShift);
+    _guardAt = null;
     await player.open(Media(_mediaUri(path)), play: false);
     await _waitReady(player);
     final decoded = await _prepareRender(player);
@@ -160,6 +172,7 @@ class PlaybackEngine extends ChangeNotifier {
     DeveloperLog.player('tempo rate=$rate pitchShift=$pitchShift');
     _rate = rate.clamp(0.25, 8.0).toDouble();
     _pitchShift = pitchShift;
+    _guardAt = null;
     final player = _player;
     if (player == null) return;
     await _applyPitchCorrection(player, pitchShift);
@@ -470,8 +483,36 @@ class PlaybackEngine extends ChangeNotifier {
     return target;
   }
 
+  void _guardClock(Player player) {
+    final now = DateTime.now();
+    if (!player.state.playing || player.state.buffering || _seekTarget != null) {
+      _guardAt = null;
+      return;
+    }
+    final at = _guardAt;
+    if (at == null) {
+      _guardAt = now;
+      _guardPos = player.state.position;
+      return;
+    }
+    final wall = now.difference(at);
+    if (wall < _guardWindow) return;
+    final pos = player.state.position;
+    final from = _guardPos;
+    _guardAt = now;
+    _guardPos = pos;
+    final step = Duration(microseconds: (wall.inMicroseconds * _rate).round());
+    final allowed = Duration(microseconds: (step.inMicroseconds * _guardSlack).round()) + _guardGrace;
+    if (pos - from <= allowed) return;
+    final expected = from + step;
+    DeveloperLog.player('clock ran ahead ' + (pos - from).inMilliseconds.toString() + 'ms in ' + wall.inMilliseconds.toString() + 'ms, resync to ' + expected.inMilliseconds.toString() + 'ms');
+    _guardAt = null;
+    unawaited(seekTo(expected));
+  }
+
   void _emit(Player player) {
     if (value.hasError) return;
+    _guardClock(player);
     final size = _sizeOf(player);
     final ready = player.state.duration > Duration.zero || size.width > 1 || player.state.playing;
     final playing = player.state.playing;
@@ -490,16 +531,62 @@ class PlaybackEngine extends ChangeNotifier {
 
   Future<void> play() async {
     DeveloperLog.player('play');
-    wantPlay = true;
     _alive.add(this);
-    await _pauseOthers();
-    await _player?.play();
+    await _setPlaying(true);
   }
 
   Future<void> pause() async {
     DeveloperLog.player('pause');
-    wantPlay = false;
-    await _player?.pause();
+    await _setPlaying(false);
+  }
+
+  Future<void> _setPlaying(bool on) {
+    wantPlay = on;
+    final done = Completer<void>();
+    _playWaiters.add(done);
+    _schedulePlaying();
+    return done.future;
+  }
+
+  void _schedulePlaying() {
+    if (_playApplying || _playTimer != null) return;
+    final wait = _playGap - DateTime.now().difference(_playAppliedAt);
+    if (wait <= Duration.zero) {
+      unawaited(_applyPlaying());
+      return;
+    }
+    _playTimer = Timer(wait, () {
+      _playTimer = null;
+      unawaited(_applyPlaying());
+    });
+  }
+
+  Future<void> _applyPlaying() async {
+    if (_playApplying) return;
+    _playApplying = true;
+    final batch = List<Completer<void>>.of(_playWaiters);
+    _playWaiters.clear();
+    final on = wantPlay;
+    try {
+      final player = _player;
+      if (player != null && !_closed) {
+        _guardAt = null;
+        if (on) {
+          await _pauseOthers();
+          if (wantPlay == on) await player.play();
+        } else {
+          await player.pause();
+        }
+      }
+    } catch (_) {
+    } finally {
+      _playAppliedAt = DateTime.now();
+      _playApplying = false;
+      for (final c in batch) {
+        if (!c.isCompleted) c.complete();
+      }
+      if (_playWaiters.isNotEmpty || wantPlay != on) _schedulePlaying();
+    }
   }
 
   Future<void> _pauseOthers() async {
@@ -552,6 +639,12 @@ class PlaybackEngine extends ChangeNotifier {
     _closed = true;
     _seekTarget = null;
     wantPlay = false;
+    _playTimer?.cancel();
+    _playTimer = null;
+    for (final c in _playWaiters) {
+      if (!c.isCompleted) c.complete();
+    }
+    _playWaiters.clear();
     _openSeq++;
     _alive.remove(this);
     final inFlight = _inFlight;

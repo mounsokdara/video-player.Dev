@@ -280,147 +280,26 @@ class VideoGridCard extends StatelessWidget {
   }
 }
 
-/// Bottom sheet that can be dragged between a minimum and a maximum height.
-///
-/// [initial] is the opening height and [maxSize] the hard upper limit (both fractions of the
-/// screen). With [fitContent] (default) the maximum is also capped at the height the content
-/// actually needs, so a short menu can never be dragged out into a mostly empty full-screen sheet;
-/// long content still scrolls inside the sheet up to [maxSize].
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required List<Widget> Function(BuildContext ctx) children,
-  double initial = 0.56,
-  double maxSize = 0.95,
-  bool fitContent = true,
 }) {
-  final pad = SystemBars.rawOf(context);
-  final bottomBar = SystemBars.bottomInset(context);
-  // Landscape phones are short: open the sheet (nearly) full height so the
-  // actions are not cut off, and keep it a readable width on wide screens.
-  final short = MediaQuery.sizeOf(context).height < 520;
-  final cap = maxSize.clamp(0.38, 0.95).toDouble();
-  final startSize = (short ? cap : initial).clamp(0.38, cap).toDouble();
   return SystemBars.modal(
     () => showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
-      enableDrag: true,
-      showDragHandle: false,
-      constraints: const BoxConstraints(maxWidth: 640),
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: pad.left, right: pad.right),
-        child: _FitSheet(
-          start: startSize,
-          max: cap,
-          fit: fitContent,
-          bottomPad: bottomBar,
-          children: () => children(ctx),
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children(ctx),
+          ),
         ),
       ),
     ),
   );
-}
-
-/// Draggable sheet body for [showAppSheet]: measures its content once laid out and lowers the
-/// maximum size to fit it (never below [_minFloor], never above [max]).
-class _FitSheet extends StatefulWidget {
-  const _FitSheet({
-    required this.start,
-    required this.max,
-    required this.fit,
-    required this.bottomPad,
-    required this.children,
-  });
-  final double start;
-  final double max;
-  final bool fit;
-  final double bottomPad;
-  final List<Widget> Function() children;
-
-  @override
-  State<_FitSheet> createState() => _FitSheetState();
-}
-
-class _FitSheetState extends State<_FitSheet> {
-  static const _minFloor = 0.28;
-  // Drag handle block (8 + 4 + 8) plus the list's own bottom padding (12).
-  static const _chrome = 32.0;
-
-  final _contentKey = GlobalKey();
-  double? _fitted;
-
-  void _measure(double available) {
-    if (!widget.fit || available <= 0) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final h = _contentKey.currentContext?.size?.height;
-      if (h == null) return;
-      final frac = ((h + _chrome) / available).clamp(_minFloor, widget.max).toDouble();
-      if (_fitted == null || (frac - _fitted!).abs() > 0.003) setState(() => _fitted = frac);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final sheet = LayoutBuilder(
-      builder: (context, box) {
-        _measure(box.maxHeight);
-        final cap = _fitted ?? widget.max;
-        final low = cap < _minFloor ? cap : _minFloor;
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: widget.start.clamp(low, cap).toDouble(),
-          minChildSize: low,
-          maxChildSize: cap,
-          builder: (_, sc) {
-            return Material(
-              color: scheme.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: ListView(
-                controller: sc,
-                padding: const EdgeInsets.only(bottom: 12),
-                children: [
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Container(
-                      width: 32,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Column(
-                    key: _contentKey,
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: widget.children(),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-    // The sheet ends above the navigation bar (its last row can never sit under the bar's buttons);
-    // the bar area itself is painted with the sheet colour so it still looks like one surface.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Padding(padding: EdgeInsets.only(bottom: widget.bottomPad), child: sheet),
-        if (widget.bottomPad > 0)
-          Positioned(left: 0, right: 0, bottom: 0, height: widget.bottomPad, child: ColoredBox(color: scheme.surface)),
-      ],
-    );
-  }
 }
 
 Future<void> showItemsMenu(
@@ -442,7 +321,6 @@ Future<void> showItemsMenu(
   final allPinned = items.every((e) => appSettings.pinned.contains(e.path));
   await showAppSheet<void>(
     context: context,
-    initial: 0.72,
     children: (ctx) => [
       ListTile(
         leading: many
@@ -570,7 +448,6 @@ Future<void> showItemsMenu(
           }
           showAppSheet<void>(
             context: context,
-            initial: 0.4,
             children: (c) => [
               const ListTile(title: Text('Properties')),
               ListTile(title: const Text('Items'), subtitle: Text('${items.length}')),
@@ -637,7 +514,6 @@ Future<void> showProperties(BuildContext context, VideoItem item) async {
   ];
   await showAppSheet<void>(
     context: context,
-    initial: 0.78,
     children: (ctx) => [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 4, 8, 8),
@@ -780,7 +656,6 @@ Future<void> showFolderEntryMenu(
   final name = path.split(RegExp(r'[/\\]')).last;
   await showAppSheet<void>(
     context: context,
-    initial: 0.56,
     children: (ctx) => [
       ListTile(title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(isDir ? 'Folder' : 'Video')),
       if (onOpen != null)

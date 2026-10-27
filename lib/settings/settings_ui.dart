@@ -497,7 +497,6 @@ class _VideoSettingsState extends State<VideoSettings> {
               ];
               final v = await showAppSheet<RotationLock>(
                 context: context,
-                initial: 0.62,
                 children: (ctx) => [
                   for (final e in modes)
                     ListTile(title: Text(e.label), onTap: () => Navigator.pop(ctx, e)),
