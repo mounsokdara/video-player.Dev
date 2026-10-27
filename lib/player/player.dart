@@ -1264,7 +1264,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
               HudLayer(
                 fabs: decodeHud(appSettings.hudFabsJson),
                 pad: pad,
-                bottomReserve: 24,
                 onTap: (id) => unawaited(_runAction(id)),
               ),
             if (showUi && !locked) ..._chrome(c, size, watch: watch, pad: pad),

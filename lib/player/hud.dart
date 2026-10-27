@@ -24,36 +24,66 @@ class HudFab {
 }
 
 class HudLayer extends StatelessWidget {
-  const HudLayer({super.key, required this.fabs, required this.onTap, this.pad = EdgeInsets.zero, this.bottomReserve = 88});
+  const HudLayer({super.key, required this.fabs, required this.onTap, this.pad = EdgeInsets.zero});
   final List<HudFab> fabs;
   final void Function(String id) onTap;
   final EdgeInsets pad;
-  final double bottomReserve;
+
+  static const _bottomReserve = 24.0;
+
+  static Size _span(HudFab f, Size area, EdgeInsets pad) => Size(
+        (area.width - pad.left - pad.right - f.size).clamp(0.0, area.width).toDouble(),
+        (area.height - pad.top - pad.bottom - f.size - _bottomReserve).clamp(0.0, area.height).toDouble(),
+      );
+
+  static Offset place(HudFab f, Size area, EdgeInsets pad) {
+    final span = _span(f, area, pad);
+    return Offset(pad.left + f.x * span.width, pad.top + f.y * span.height);
+  }
+
+  static HudFab moved(HudFab f, Offset delta, Size area, EdgeInsets pad) {
+    final span = _span(f, area, pad);
+    final at = place(f, area, pad) + delta;
+    return HudFab(
+      id: f.id,
+      x: span.width <= 0 ? f.x : ((at.dx - pad.left) / span.width).clamp(0.0, 1.0).toDouble(),
+      y: span.height <= 0 ? f.y : ((at.dy - pad.top) / span.height).clamp(0.0, 1.0).toDouble(),
+      size: f.size,
+    );
+  }
+
+  static Widget button(HudFab f, VoidCallback onPressed, {Object? heroTag}) {
+    return FloatingActionButton(
+      heroTag: heroTag,
+      onPressed: onPressed,
+      child: Icon(iconFor(f.id), size: (f.size * 0.42).clamp(18.0, 36.0)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     if (fabs.isEmpty) return const SizedBox.shrink();
-    final size = MediaQuery.sizeOf(context);
-    return IgnorePointer(
-      ignoring: false,
-      child: Stack(
-        children: [
-          for (final f in fabs)
-            Positioned(
-              left: pad.left + f.x * (size.width - pad.left - pad.right - f.size).clamp(0.0, size.width),
-              top: pad.top + f.y * (size.height - pad.top - pad.bottom - f.size - bottomReserve).clamp(0.0, size.height),
-              width: f.size,
-              height: f.size,
-              child: FloatingActionButton(
-                heroTag: 'hud-${f.id}-${f.x}-${f.y}',
-                onPressed: () => onTap(f.id),
-                child: Icon(iconFor(f.id), size: (f.size * 0.42).clamp(18.0, 36.0)),
-              ),
-            ),
-        ],
-      ),
+    final area = MediaQuery.sizeOf(context);
+    return Stack(
+      children: [
+        for (final f in fabs)
+          Positioned(
+            left: place(f, area, pad).dx,
+            top: place(f, area, pad).dy,
+            width: f.size,
+            height: f.size,
+            child: button(f, () => onTap(f.id), heroTag: 'hud-${f.id}-${f.x}-${f.y}'),
+          ),
+      ],
     );
   }
+
+  static String labelFor(String id) => switch (id) {
+        'hdr' => 'HDR',
+        'playlist' => 'Playlist',
+        'more' => 'More',
+        _ => AppSettings.allQuickActions[id] ?? id,
+      };
 
   static IconData iconFor(String id) => switch (id) {
         'hdr' => Icons.hdr_on,
@@ -105,6 +135,7 @@ class HudEditorPage extends StatefulWidget {
 class _HudEditorPageState extends State<HudEditorPage> {
   late List<HudFab> _fabs;
   bool _dirty = false;
+  bool _landscape = true;
   int? _active;
 
   @override
@@ -113,7 +144,6 @@ class _HudEditorPageState extends State<HudEditorPage> {
     _fabs = decodeHud(appSettings.hudFabsJson);
   }
 
-  /// Pops the page, or closes the activity when it runs on its own (nothing to pop).
   void _close() {
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
@@ -163,17 +193,17 @@ class _HudEditorPageState extends State<HudEditorPage> {
     final id = await showModalBottomSheet<String>(
       context: context,
       builder: (ctx) {
-        final pad = MediaQuery.viewPaddingOf(ctx);
-        return ListView(
-          padding: EdgeInsets.only(bottom: pad.bottom + 16),
-          children: [
-            const ListTile(title: Text('Add from More', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-            ListTile(title: const Text('HDR'), leading: const Icon(Icons.hdr_on), onTap: () => Navigator.pop(ctx, 'hdr')),
-            ListTile(title: const Text('Playlist'), leading: const Icon(Icons.queue_music), onTap: () => Navigator.pop(ctx, 'playlist')),
-            ListTile(title: const Text('More'), leading: const Icon(Icons.more_vert), onTap: () => Navigator.pop(ctx, 'more')),
-            for (final e in AppSettings.allQuickActions.entries)
-              ListTile(title: Text(e.value), leading: Icon(HudLayer.iconFor(e.key)), onTap: () => Navigator.pop(ctx, e.key)),
-          ],
+        return SafeArea(
+          child: ListView(
+            children: [
+              const ListTile(title: Text('Add from More', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+              ListTile(title: const Text('HDR'), leading: const Icon(Icons.hdr_on), onTap: () => Navigator.pop(ctx, 'hdr')),
+              ListTile(title: const Text('Playlist'), leading: const Icon(Icons.queue_music), onTap: () => Navigator.pop(ctx, 'playlist')),
+              ListTile(title: const Text('More'), leading: const Icon(Icons.more_vert), onTap: () => Navigator.pop(ctx, 'more')),
+              for (final e in AppSettings.allQuickActions.entries)
+                ListTile(title: Text(e.value), leading: Icon(HudLayer.iconFor(e.key)), onTap: () => Navigator.pop(ctx, e.key)),
+            ],
+          ),
         );
       },
     );
@@ -185,10 +215,103 @@ class _HudEditorPageState extends State<HudEditorPage> {
     });
   }
 
+  void _replace(int i, HudFab f) {
+    setState(() {
+      _fabs[i] = f;
+      _dirty = true;
+    });
+  }
+
+  Widget _preview(Size area) {
+    return FittedBox(
+      child: SizedBox.fromSize(
+        size: area,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _active = null),
+                  child: const _PlayerMock(),
+                ),
+              ),
+              for (var i = 0; i < _fabs.length; i++)
+                Positioned(
+                  left: HudLayer.place(_fabs[i], area, EdgeInsets.zero).dx,
+                  top: HudLayer.place(_fabs[i], area, EdgeInsets.zero).dy,
+                  width: _fabs[i].size,
+                  height: _fabs[i].size,
+                  child: GestureDetector(
+                    onPanStart: (_) => setState(() => _active = i),
+                    onPanUpdate: (d) => _replace(i, HudLayer.moved(_fabs[i], d.delta, area, EdgeInsets.zero)),
+                    child: Container(
+                      foregroundDecoration: _active == i ? BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)) : null,
+                      child: HudLayer.button(_fabs[i], () => setState(() => _active = i)),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _panel() {
+    final i = _active;
+    final f = (i != null && i < _fabs.length) ? _fabs[i] : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: true, icon: Icon(Icons.stay_current_landscape), label: Text('Landscape')),
+              ButtonSegment(value: false, icon: Icon(Icons.stay_current_portrait), label: Text('Portrait')),
+            ],
+            selected: {_landscape},
+            onSelectionChanged: (v) => setState(() => _landscape = v.first),
+          ),
+          if (f == null || i == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text('Drag a button to place it. Tap one to resize or remove it.', style: Theme.of(context).textTheme.bodySmall),
+            )
+          else
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(HudLayer.iconFor(f.id)),
+              title: Text(HudLayer.labelFor(f.id)),
+              subtitle: Slider(
+                min: 40,
+                max: 96,
+                divisions: 7,
+                label: '${f.size.round()}',
+                value: f.size.clamp(40.0, 96.0).toDouble(),
+                onChanged: (v) => _replace(i, HudFab(id: f.id, x: f.x, y: f.y, size: v)),
+              ),
+              trailing: IconButton(
+                color: Theme.of(context).colorScheme.error,
+                onPressed: () => setState(() {
+                  _fabs.removeAt(i);
+                  _active = null;
+                  _dirty = true;
+                }),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pad = MediaQuery.viewPaddingOf(context);
-    final size = MediaQuery.sizeOf(context);
+    final device = MediaQuery.sizeOf(context);
+    final area = _landscape ? Size(device.longestSide, device.shortestSide) : Size(device.shortestSide, device.longestSide);
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) async {
@@ -196,7 +319,6 @@ class _HudEditorPageState extends State<HudEditorPage> {
         if (await _confirmLeave() && mounted) _close();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF101418),
         appBar: AppBar(
           leading: Navigator.canPop(context)
               ? null
@@ -209,127 +331,96 @@ class _HudEditorPageState extends State<HudEditorPage> {
             TextButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _GridPainter(),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Center(child: _preview(area)),
+                ),
               ),
-            ),
-            for (var i = 0; i < _fabs.length; i++)
-              _HudHandle(
-                fab: _fabs[i],
-                selected: _active == i,
-                pad: pad,
-                screen: size,
-                onSelect: () => setState(() => _active = i),
-                onChange: (f) => setState(() {
-                  _fabs[i] = f;
-                  _dirty = true;
-                }),
-                onDelete: () => setState(() {
-                  _fabs.removeAt(i);
-                  _active = null;
-                  _dirty = true;
-                }),
-              ),
-          ],
+              _panel(),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _HudHandle extends StatelessWidget {
-  const _HudHandle({
-    required this.fab,
-    required this.selected,
-    required this.pad,
-    required this.screen,
-    required this.onSelect,
-    required this.onChange,
-    required this.onDelete,
-  });
-  final HudFab fab;
-  final bool selected;
-  final EdgeInsets pad;
-  final Size screen;
-  final VoidCallback onSelect;
-  final ValueChanged<HudFab> onChange;
-  final VoidCallback onDelete;
+class _PlayerMock extends StatelessWidget {
+  const _PlayerMock();
 
   @override
   Widget build(BuildContext context) {
-    final maxW = (screen.width - pad.left - pad.right - fab.size).clamp(1.0, screen.width);
-    final maxH = (screen.height - pad.top - pad.bottom - fab.size - 120).clamp(1.0, screen.height);
-    final left = pad.left + fab.x * maxW;
-    final top = pad.top + 48 + fab.y * maxH;
-    return Positioned(
-      left: left,
-      top: top,
-      child: GestureDetector(
-        onTap: onSelect,
-        onPanUpdate: (d) {
-          onChange(HudFab(
-            id: fab.id,
-            x: ((left + d.delta.dx - pad.left) / maxW).clamp(0.0, 1.0),
-            y: ((top + d.delta.dy - pad.top - 48) / maxH).clamp(0.0, 1.0),
-            size: fab.size,
-          ));
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: fab.size,
-              height: fab.size,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                shape: BoxShape.circle,
-                border: selected ? Border.all(color: Colors.white, width: 3) : null,
-              ),
-              child: Icon(HudLayer.iconFor(fab.id), color: Theme.of(context).colorScheme.onPrimary),
+    const light = TextStyle(color: Colors.white, fontSize: 14);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF263238), Colors.black],
             ),
-            if (selected)
-              Row(
+          ),
+        ),
+        const Center(child: Icon(Icons.movie_outlined, size: 96, color: Colors.white12)),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 56,
+          child: ColoredBox(
+            color: Colors.black38,
+            child: Row(
+              children: [
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.keyboard_arrow_down, color: Colors.white)),
+                const Expanded(child: Text('Video title', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+                for (final id in appSettings.titleActions)
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Icon(HudLayer.iconFor(id), color: Colors.white, size: 22)),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: ColoredBox(
+            color: Colors.black38,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    color: Colors.white,
-                    onPressed: () => onChange(HudFab(id: fab.id, x: fab.x, y: fab.y, size: (fab.size - 8).clamp(40.0, 96.0))),
-                    icon: const Icon(Icons.remove),
+                  const Row(
+                    children: [
+                      Text('00:12', style: light),
+                      Expanded(child: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: LinearProgressIndicator(value: 0.3))),
+                      Text('-00:30', style: light),
+                    ],
                   ),
-                  IconButton(
-                    color: Colors.white,
-                    onPressed: () => onChange(HudFab(id: fab.id, x: fab.x, y: fab.y, size: (fab.size + 8).clamp(40.0, 96.0))),
-                    icon: const Icon(Icons.add),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.skip_previous, color: Colors.white, size: 32),
+                      SizedBox(width: 16),
+                      Icon(Icons.play_circle, color: Colors.white, size: 56),
+                      SizedBox(width: 16),
+                      Icon(Icons.skip_next, color: Colors.white, size: 32),
+                    ],
                   ),
-                  IconButton(color: Colors.redAccent, onPressed: onDelete, icon: const Icon(Icons.delete_outline)),
                 ],
               ),
-          ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = const Color(0x22FFFFFF)
-      ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 32) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
-    }
-    for (double y = 0; y < size.height; y += 32) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class TitleBarEditor extends StatefulWidget {

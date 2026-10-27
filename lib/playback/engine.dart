@@ -59,11 +59,8 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
-  final List<Completer<void>> _playWaiters = [];
-  Timer? _playTimer;
-  bool _playApplying = false;
-  DateTime _playAppliedAt = DateTime.fromMillisecondsSinceEpoch(0);
-  static const _playGap = Duration(milliseconds: 250);
+  Future<void> _playChain = Future<void>.value();
+  int _playSeq = 0;
   DateTime? _guardAt;
   Duration _guardPos = Duration.zero;
   static const _guardWindow = Duration(milliseconds: 900);
@@ -542,51 +539,20 @@ class PlaybackEngine extends ChangeNotifier {
 
   Future<void> _setPlaying(bool on) {
     wantPlay = on;
-    final done = Completer<void>();
-    _playWaiters.add(done);
-    _schedulePlaying();
-    return done.future;
-  }
-
-  void _schedulePlaying() {
-    if (_playApplying || _playTimer != null) return;
-    final wait = _playGap - DateTime.now().difference(_playAppliedAt);
-    if (wait <= Duration.zero) {
-      unawaited(_applyPlaying());
-      return;
-    }
-    _playTimer = Timer(wait, () {
-      _playTimer = null;
-      unawaited(_applyPlaying());
-    });
-  }
-
-  Future<void> _applyPlaying() async {
-    if (_playApplying) return;
-    _playApplying = true;
-    final batch = List<Completer<void>>.of(_playWaiters);
-    _playWaiters.clear();
-    final on = wantPlay;
-    try {
+    final seq = ++_playSeq;
+    final run = _playChain.then((_) async {
       final player = _player;
-      if (player != null && !_closed) {
-        _guardAt = null;
-        if (on) {
-          await _pauseOthers();
-          if (wantPlay == on) await player.play();
-        } else {
-          await player.pause();
-        }
+      if (seq != _playSeq || _closed || player == null) return;
+      _guardAt = null;
+      if (on) {
+        await _pauseOthers();
+        if (seq == _playSeq) await player.play();
+      } else {
+        await player.pause();
       }
-    } catch (_) {
-    } finally {
-      _playAppliedAt = DateTime.now();
-      _playApplying = false;
-      for (final c in batch) {
-        if (!c.isCompleted) c.complete();
-      }
-      if (_playWaiters.isNotEmpty || wantPlay != on) _schedulePlaying();
-    }
+    }).catchError((_) {});
+    _playChain = run;
+    return run;
   }
 
   Future<void> _pauseOthers() async {
@@ -639,12 +605,6 @@ class PlaybackEngine extends ChangeNotifier {
     _closed = true;
     _seekTarget = null;
     wantPlay = false;
-    _playTimer?.cancel();
-    _playTimer = null;
-    for (final c in _playWaiters) {
-      if (!c.isCompleted) c.complete();
-    }
-    _playWaiters.clear();
     _openSeq++;
     _alive.remove(this);
     final inFlight = _inFlight;
