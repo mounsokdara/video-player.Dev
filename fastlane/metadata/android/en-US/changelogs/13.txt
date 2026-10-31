@@ -1,5 +1,6 @@
 v1.0.4 (2026-10-31)
 • Fix screenshot: it now captures the video frame instead of the whole screen
 • New setting: screenshot format (PNG, JPG or JPEG)
+• Reproducible F-Droid builds: same paths and JDK as F-Droid
 • Per-ABI APKs with their own version codes for F-Droid
 • Removed unused screenshot code
