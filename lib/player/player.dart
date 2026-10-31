@@ -2048,8 +2048,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   void _togglePlay() {
     final c = vc;
     if (c == null) return;
-    if (c.playIntent) {
-      c.pause();
+    if (c.value.isPlaying) {
+      c.pauseAudioFirst();
     } else {
       unawaited(AndroidBridge.requestAudioFocus());
       c.play();
