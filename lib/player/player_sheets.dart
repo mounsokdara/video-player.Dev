@@ -632,10 +632,18 @@ extension PlayerSheets on _PlayerPageState {
   }
 
   void _screenshot() {
+    final engine = vc;
     final path = item.path;
-    final pos = vc?.value.position.inMilliseconds ?? 0;
+    final title = item.title;
+    final pos = engine?.value.position.inMilliseconds ?? 0;
+    _flash('Saving');
     unawaited(() async {
-      final saved = await AndroidBridge.screenshotWindow(title: item.title, path: path, positionMs: pos);
+      String? saved;
+      final jpeg = await engine?.screenshot();
+      if (jpeg != null && jpeg.isNotEmpty) {
+        saved = await AndroidBridge.saveScreenshot(jpeg, title: title);
+      }
+      saved ??= await AndroidBridge.extractFrame(path: path, title: title, positionMs: pos);
       if (!mounted) return;
       if (saved != null) {
         _flash('Saved to DCIM/Screenshots');
@@ -644,6 +652,5 @@ extension PlayerSheets on _PlayerPageState {
         _flash('Could not capture frame');
       }
     }());
-    _flash('Saving');
   }
 }

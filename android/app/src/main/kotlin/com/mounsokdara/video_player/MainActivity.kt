@@ -8,7 +8,6 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -25,11 +24,6 @@ import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.Log
 import android.util.Rational
-import android.view.PixelCopy
-import android.view.SurfaceView
-import android.view.TextureView
-import android.view.View
-import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.widget.Toast
@@ -342,11 +336,22 @@ open class MainActivity : FlutterActivity() {
                                 mainHandler.post { result.success(bytes) }
                             }
                         }
-                        "screenshotWindow" -> {
+                        "saveScreenshot" -> {
+                            val title = call.argument<String>("title") ?: "frame"
+                            val bytes = call.argument<ByteArray>("bytes")
+                                ?: return@setMethodCallHandler result.error("ARG", "bytes", null)
+                            io.execute {
+                                val saved = saveJpegBytes(bytes, title)
+                                mainHandler.post { result.success(saved) }
+                            }
+                        }
+                        "extractFrame" -> {
                             val title = call.argument<String>("title") ?: "frame"
                             val path = call.argument<String>("path")
-                            val positionMs = call.argument<Int>("positionMs") ?: 0
-                            captureVideoShot(title, path, positionMs) { saved ->
+                                ?: return@setMethodCallHandler result.error("ARG", "path", null)
+                            val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
+                            io.execute {
+                                val saved = captureFrame(path, positionMs, title)
                                 mainHandler.post { result.success(saved) }
                             }
                         }
@@ -530,12 +535,10 @@ open class MainActivity : FlutterActivity() {
             val bitmap = retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: retriever.frameAtTime
                 ?: return null
-            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val safe = title.replace(Regex("[^A-Za-z0-9._-]"), "_").take(40)
-            val name = "VID_${stamp}_$safe.jpg"
-            val saved = saveToDcim(bitmap, name)
+            val out = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
             bitmap.recycle()
-            saved
+            saveJpegBytes(out.toByteArray(), title)
         } catch (_: Exception) {
             null
         } finally {
@@ -543,45 +546,6 @@ open class MainActivity : FlutterActivity() {
                 retriever.release()
             } catch (_: Exception) {
             }
-        }
-    }
-
-    private fun saveToDcim(bitmap: Bitmap, name: String): String? {
-        if (Build.VERSION.SDK_INT >= 29) {
-            val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, name)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/Screenshots")
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
-            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return writeLegacy(bitmap, name)
-            return try {
-                contentResolver.openOutputStream(uri)?.use { out ->
-                    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)) return writeLegacy(bitmap, name)
-                } ?: return writeLegacy(bitmap, name)
-                values.clear()
-                values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                contentResolver.update(uri, values, null, null)
-                uri.toString()
-            } catch (_: Exception) {
-                writeLegacy(bitmap, name)
-            }
-        }
-        return writeLegacy(bitmap, name)
-    }
-
-    private fun writeLegacy(bitmap: Bitmap, name: String): String? {
-        return try {
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Screenshots")
-            if (!dir.exists()) dir.mkdirs()
-            val file = File(dir, name)
-            FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
-            }
-            MediaScannerConnection.scanFile(this, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null)
-            file.absolutePath
-        } catch (_: Exception) {
-            null
         }
     }
 
@@ -1059,107 +1023,6 @@ open class MainActivity : FlutterActivity() {
         bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
         bmp.recycle()
         return out.toByteArray()
-    }
-
-    private fun collectViews(view: View, surfaces: MutableList<SurfaceView>, textures: MutableList<TextureView>) {
-        when (view) {
-            is SurfaceView -> surfaces.add(view)
-            is TextureView -> textures.add(view)
-        }
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                collectViews(view.getChildAt(i), surfaces, textures)
-            }
-        }
-    }
-
-    private fun isMostlyBlack(bmp: Bitmap): Boolean {
-        val w = bmp.width
-        val h = bmp.height
-        if (w < 4 || h < 4) return true
-        val stepX = (w / 8).coerceAtLeast(1)
-        val stepY = (h / 8).coerceAtLeast(1)
-        var dark = 0
-        var n = 0
-        var y = 0
-        while (y < h) {
-            var x = 0
-            while (x < w) {
-                val c = bmp.getPixel(x, y)
-                if (Color.red(c) + Color.green(c) + Color.blue(c) < 48) dark++
-                n++
-                x += stepX
-            }
-            y += stepY
-        }
-        return n == 0 || dark * 10 >= n * 8
-    }
-
-    private fun captureVideoShot(title: String, path: String?, positionMs: Int, done: (String?) -> Unit) {
-        fun fallback() {
-            if (path.isNullOrEmpty()) {
-                done(null)
-                return
-            }
-            io.execute { done(captureFrame(path, positionMs.toLong(), title)) }
-        }
-
-        fun saveBmp(bmp: Bitmap) {
-            io.execute {
-                val out = java.io.ByteArrayOutputStream()
-                bmp.compress(Bitmap.CompressFormat.JPEG, 92, out)
-                bmp.recycle()
-                done(saveJpegBytes(out.toByteArray(), title))
-            }
-        }
-
-        val root = window?.decorView
-        if (root == null) {
-            fallback()
-            return
-        }
-        val surfaces = mutableListOf<SurfaceView>()
-        val textures = mutableListOf<TextureView>()
-        collectViews(root, surfaces, textures)
-
-        val tex = textures.maxByOrNull { it.width * it.height }
-        if (tex != null && tex.isAvailable && tex.width > 8 && tex.height > 8) {
-            try {
-                val bmp = tex.getBitmap()
-                if (bmp != null && !isMostlyBlack(bmp)) {
-                    saveBmp(bmp)
-                    return
-                }
-                bmp?.recycle()
-            } catch (_: Exception) {
-            }
-        }
-
-        val surface = surfaces.maxByOrNull { it.width * it.height }
-        if (Build.VERSION.SDK_INT >= 24 && surface != null && surface.width > 8 && surface.height > 8) {
-            val bmp = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
-            try {
-                PixelCopy.request(surface, bmp, { code ->
-                    if (code == PixelCopy.SUCCESS && !isMostlyBlack(bmp)) {
-                        saveBmp(bmp)
-                    } else {
-                        try {
-                            bmp.recycle()
-                        } catch (_: Exception) {
-                        }
-                        fallback()
-                    }
-                }, mainHandler)
-                return
-            } catch (_: Exception) {
-                try {
-                    bmp.recycle()
-                } catch (_: Exception) {
-                }
-            }
-        }
-
-        fallback()
     }
 
     private fun saveJpegBytes(bytes: ByteArray, title: String): String? {

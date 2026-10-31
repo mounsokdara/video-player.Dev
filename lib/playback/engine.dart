@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -63,6 +64,17 @@ class PlaybackEngine extends ChangeNotifier {
   String? _codecWarn;
 
   bool get hasPlayer => _player != null && !_closed;
+
+  /// JPEG of the current video frame (no UI, no subtitles) straight from mpv.
+  Future<Uint8List?> screenshot() async {
+    final p = _player;
+    if (p == null || _closed) return null;
+    try {
+      return await p.screenshot(format: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
+  }
   String get hwdecName => _hwdec ?? 'unknown';
 
   int _openSeq = 0;
