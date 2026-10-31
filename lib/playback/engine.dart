@@ -61,8 +61,6 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
-  bool _muted = false;
-  int _softSeq = 0;
   String debugInfo = '';
   String? _codecWarn;
 
@@ -89,6 +87,8 @@ class PlaybackEngine extends ChangeNotifier {
     } catch (_) {}
     return null;
   }
+
+  String get hwdecName => _hwdec ?? 'unknown';
 
   String get hwdecName => _hwdec ?? 'unknown';
 
@@ -518,51 +518,15 @@ class PlaybackEngine extends ChangeNotifier {
   Future<void> play() async {
     DeveloperLog.player('play');
     wantPlay = true;
-    _softSeq++;
     _alive.add(this);
     await _pauseOthers();
-    await _setMute(false);
     await _player?.play();
   }
 
   Future<void> pause() async {
     DeveloperLog.player('pause');
     wantPlay = false;
-    _softSeq++;
     await _player?.pause();
-    await _setMute(false);
-  }
-
-  /// How long audio is silenced before the frame freezes. mpv pauses audio and
-  /// video with one property, but the audio device keeps playing what it already
-  /// buffered, so the picture stops first. Muting first lets that tail drain
-  /// while the picture is still moving, so the sound ends before the frame does.
-  static const _audioLead = Duration(milliseconds: 120);
-
-  /// User-initiated pause: audio stops first, then the frame. A play() or pause()
-  /// that arrives during the lead cancels this one.
-  Future<void> pauseAudioFirst() async {
-    DeveloperLog.player('pause (audio first)');
-    wantPlay = false;
-    final p = _player;
-    if (p == null) return;
-    final seq = ++_softSeq;
-    await _setMute(true);
-    await Future<void>.delayed(_audioLead);
-    if (seq != _softSeq || _closed || !identical(p, _player)) return;
-    await p.pause();
-    await _setMute(false);
-  }
-
-  Future<void> _setMute(bool on) async {
-    if (_muted == on) return;
-    final p = _player;
-    if (p == null) return;
-    _muted = on;
-    try {
-      final platform = p.platform;
-      if (platform is NativePlayer) await platform.setProperty('mute', on ? 'yes' : 'no');
-    } catch (_) {}
   }
 
   Future<void> _pauseOthers() async {
@@ -615,7 +579,6 @@ class PlaybackEngine extends ChangeNotifier {
     _closed = true;
     _seekTarget = null;
     wantPlay = false;
-    _softSeq++;
     _openSeq++;
     _alive.remove(this);
     final inFlight = _inFlight;

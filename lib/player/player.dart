@@ -2049,7 +2049,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     final c = vc;
     if (c == null) return;
     if (c.value.isPlaying) {
-      c.pauseAudioFirst();
+      c.pause();
     } else {
       unawaited(AndroidBridge.requestAudioFocus());
       c.play();

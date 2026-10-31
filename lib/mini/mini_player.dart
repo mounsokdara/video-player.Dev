@@ -286,7 +286,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     try {
       if (c.value.isPlaying) {
         _wasPlayingBeforePark = false;
-        await c.pauseAudioFirst();
+        await c.pause();
       } else {
         await AndroidBridge.requestAudioFocus();
         await c.play();
