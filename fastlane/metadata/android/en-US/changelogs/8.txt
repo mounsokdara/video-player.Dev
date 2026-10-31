@@ -1,0 +1,4 @@
+v1.0.3.2 (2026-10-10)
+• Playlist auto-next fixes: only advances after the video really played
+• Progress is saved only when the duration is known
+• Files not in the library no longer show 0:00 duration

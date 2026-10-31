@@ -1,0 +1,2 @@
+v1.0.3.3 (2026-10-10)
+• Mini player: the second finger can land anywhere and joins the pinch
