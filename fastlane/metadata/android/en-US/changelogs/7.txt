@@ -1,5 +1,0 @@
-v1.0.3.1 (2026-10-10)
-• Live Caption (Accessibility): AI captions, model downloaded on demand
-• Captions are saved per video, phrase by phrase, and reused next time
-• Caption progress shown while a video is being transcribed
-• Captions stay on across the controls, mini player and leaving the player
