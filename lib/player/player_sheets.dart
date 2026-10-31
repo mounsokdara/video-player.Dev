@@ -640,9 +640,9 @@ extension PlayerSheets on _PlayerPageState {
     _flash('Saving');
     unawaited(() async {
       String? saved;
-      final image = await engine?.screenshot(format);
-      if (image != null && image.isNotEmpty) {
-        saved = await AndroidBridge.saveScreenshot(image, title: title, format: format);
+      final file = await engine?.screenshotToFile(format);
+      if (file != null) {
+        saved = await AndroidBridge.saveScreenshotFile(file, title: title, format: format);
       }
       saved ??= await AndroidBridge.extractFrame(path: path, title: title, positionMs: pos, format: format);
       if (!mounted) return;

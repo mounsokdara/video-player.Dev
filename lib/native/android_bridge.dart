@@ -353,11 +353,11 @@ class AndroidBridge {
     } catch (_) {}
   }
 
-  static Future<String?> saveScreenshot(Uint8List image, {String? title, required ScreenshotFormat format}) async {
+  static Future<String?> saveScreenshotFile(String path, {String? title, required ScreenshotFormat format}) async {
     try {
-      return await _ch.invokeMethod<String>('saveScreenshot', {
+      return await _ch.invokeMethod<String>('saveScreenshotFile', {
         'title': title ?? 'frame',
-        'bytes': image,
+        'path': path,
         'ext': format.ext,
         'mime': format.mime,
       });

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -61,22 +61,41 @@ class PlaybackEngine extends ChangeNotifier {
   double _rate = 1;
   bool _pitchShift = false;
   bool wantPlay = false;
+  bool _intent = false;
+  int _busy = 0;
+  bool _emitQueued = false;
   String debugInfo = '';
   String? _codecWarn;
 
   bool get hasPlayer => _player != null && !_closed;
+  String get hwdecName => _hwdec ?? 'unknown';
 
-  /// Encoded image (PNG or JPEG) of the current video frame (no UI, no subtitles) straight from mpv.
-  Future<Uint8List?> screenshot(ScreenshotFormat format) async {
+  /// The play/pause state the user last asked for. Unlike [EngineValue.isPlaying] it
+  /// changes the moment play/pause is called, so rapid taps always toggle from the
+  /// latest request instead of a stale mpv event.
+  bool get playIntent => _intent;
+
+  /// Saves the current video frame (no UI, no subtitles) with mpv's native encoder
+  /// and returns the temp file path. media_kit's own screenshot() loops over every
+  /// pixel in Dart and holds the player lock, which stalls play/pause meanwhile.
+  Future<String?> screenshotToFile(ScreenshotFormat format) async {
     final p = _player;
     if (p == null || _closed) return null;
+    final platform = p.platform;
+    if (platform is! NativePlayer) return null;
+    final path = '${Directory.systemTemp.path}/frame_${DateTime.now().microsecondsSinceEpoch}.${format == ScreenshotFormat.png ? 'png' : 'jpg'}';
     try {
-      return await p.screenshot(format: format.mime);
-    } catch (_) {
-      return null;
-    }
+      await platform.setProperty('screenshot-jpeg-quality', '95');
+      await platform.setProperty('screenshot-png-compression', '3');
+      await (platform as dynamic).command(['screenshot-to-file', path, 'video']);
+      final f = File(path);
+      if (await f.exists() && await f.length() > 0) return path;
+    } catch (_) {}
+    try {
+      File(path).deleteSync();
+    } catch (_) {}
+    return null;
   }
-  String get hwdecName => _hwdec ?? 'unknown';
 
   int _openSeq = 0;
   String? _pendingKey;
@@ -152,6 +171,7 @@ class PlaybackEngine extends ChangeNotifier {
     final player = _player!;
     _hwdec = hwdec;
     await _applyHwdec(player, hwdec);
+    await _setProp(player, 'audio-buffer', '0.1');
     await _resetPerFile(player);
     await _applyPitchCorrection(player, _pitchShift);
     await player.open(Media(_mediaUri(path)), play: false);
@@ -402,7 +422,15 @@ class PlaybackEngine extends ChangeNotifier {
   }
 
   void _bind(Player player) {
-    void push() => _emit(player);
+    void push() {
+      if (_emitQueued) return;
+      _emitQueued = true;
+      scheduleMicrotask(() {
+        _emitQueued = false;
+        if (!_closed && identical(_player, player)) _emit(player);
+      });
+    }
+
     _subs.addAll([
       player.stream.playing.listen((_) => push()),
       player.stream.completed.listen((done) {
@@ -488,7 +516,8 @@ class PlaybackEngine extends ChangeNotifier {
     final size = _sizeOf(player);
     final ready = player.state.duration > Duration.zero || size.width > 1 || player.state.playing;
     final playing = player.state.playing;
-    value = EngineValue(
+    if (_busy == 0) _intent = playing;
+    final next = EngineValue(
       isInitialized: ready,
       isPlaying: playing,
       isBuffering: player.state.buffering,
@@ -498,32 +527,75 @@ class PlaybackEngine extends ChangeNotifier {
       duration: player.state.duration,
       size: size,
     );
+    final old = value;
+    if (old.isInitialized == next.isInitialized &&
+        old.isPlaying == next.isPlaying &&
+        old.isBuffering == next.isBuffering &&
+        old.hasError == next.hasError &&
+        old.completed == next.completed &&
+        old.position == next.position &&
+        old.duration == next.duration &&
+        old.size == next.size) {
+      return;
+    }
+    value = next;
     notifyListeners();
   }
 
-  Future<void> play() async {
-    DeveloperLog.player('play');
-    wantPlay = true;
-    _alive.add(this);
-    await _pauseOthers();
-    await _player?.play();
+  Future<void> play() => _setPlaying(true);
+
+  Future<void> pause() => _setPlaying(false);
+
+  Future<void> togglePlay() => _setPlaying(!_intent);
+
+  /// Every mpv command this call needs (own play/pause plus pausing the other
+  /// engines) is started in the same synchronous turn and awaited together, so
+  /// nothing waits on anything else and nothing can be reordered by an await.
+  Future<void> _setPlaying(bool on) {
+    DeveloperLog.player(on ? 'play' : 'pause');
+    wantPlay = on;
+    _intent = on;
+    final jobs = <Future<void>>[];
+    if (on) {
+      _alive.add(this);
+      jobs.addAll(_pauseOthersJobs());
+    }
+    jobs.add(_send(on));
+    return Future.wait(jobs).then((_) {});
   }
 
-  Future<void> pause() async {
-    DeveloperLog.player('pause');
-    wantPlay = false;
-    await _player?.pause();
-  }
-
-  Future<void> _pauseOthers() async {
-    final others = _alive.where((e) => !identical(e, this) && !e._closed).toList();
-    for (final e in others) {
-      e.wantPlay = false;
-      try {
-        await e._player?.pause();
-      } catch (_) {}
+  Future<void> _send(bool on) async {
+    final p = _player;
+    if (p == null) return;
+    _busy++;
+    try {
+      if (on) {
+        await p.play(synchronized: false);
+      } else {
+        await p.pause(synchronized: false);
+      }
+    } catch (_) {
+    } finally {
+      _busy--;
+      // If a later request finished before an earlier one, make mpv match the latest.
+      if (_busy == 0 && !_closed && identical(p, _player) && !p.state.completed && p.state.playing != _intent) {
+        unawaited(_send(_intent));
+      }
     }
   }
+
+  List<Future<void>> _pauseOthersJobs() {
+    final jobs = <Future<void>>[];
+    for (final e in _alive.toList()) {
+      if (identical(e, this) || e._closed) continue;
+      e.wantPlay = false;
+      e._intent = false;
+      jobs.add(e._send(false));
+    }
+    return jobs;
+  }
+
+  Future<void> _pauseOthers() => Future.wait(_pauseOthersJobs()).then((_) {});
 
   /// [fast] snaps to the nearest keyframe instead of decoding up to the exact
   /// frame. Use it for scrubbing; exact seeks are slow on long-GOP or
@@ -565,6 +637,7 @@ class PlaybackEngine extends ChangeNotifier {
     _closed = true;
     _seekTarget = null;
     wantPlay = false;
+    _intent = false;
     _openSeq++;
     _alive.remove(this);
     final inFlight = _inFlight;

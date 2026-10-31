@@ -336,14 +336,21 @@ open class MainActivity : FlutterActivity() {
                                 mainHandler.post { result.success(bytes) }
                             }
                         }
-                        "saveScreenshot" -> {
+                        "saveScreenshotFile" -> {
                             val title = call.argument<String>("title") ?: "frame"
-                            val bytes = call.argument<ByteArray>("bytes")
-                                ?: return@setMethodCallHandler result.error("ARG", "bytes", null)
+                            val path = call.argument<String>("path")
+                                ?: return@setMethodCallHandler result.error("ARG", "path", null)
                             val ext = call.argument<String>("ext") ?: "jpg"
                             val mime = call.argument<String>("mime") ?: "image/jpeg"
                             io.execute {
-                                val saved = saveImageBytes(bytes, title, ext, mime)
+                                val file = File(path)
+                                val saved = try {
+                                    saveImageBytes(file.readBytes(), title, ext, mime)
+                                } catch (_: Exception) {
+                                    null
+                                } finally {
+                                    file.delete()
+                                }
                                 mainHandler.post { result.success(saved) }
                             }
                         }
