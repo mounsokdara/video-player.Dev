@@ -90,8 +90,6 @@ class PlaybackEngine extends ChangeNotifier {
 
   String get hwdecName => _hwdec ?? 'unknown';
 
-  String get hwdecName => _hwdec ?? 'unknown';
-
   int _openSeq = 0;
   String? _pendingKey;
   Future<void>? _pendingOpen;
