@@ -523,6 +523,24 @@ class _VideoSettingsState extends State<VideoSettings> {
             },
           ),
           ListTile(
+            title: const Text('Screenshot format'),
+            subtitle: Text(s.screenshotFormat.label),
+            onTap: () async {
+              final v = await showAppSheet<ScreenshotFormat>(
+                context: context,
+                children: (ctx) => [
+                  for (final e in ScreenshotFormat.values)
+                    ListTile(
+                      title: Text(e.label),
+                      trailing: e == s.screenshotFormat ? const Icon(Icons.check) : null,
+                      onTap: () => Navigator.pop(ctx, e),
+                    ),
+                ],
+              );
+              if (v != null) set(() => s.screenshotFormat = v);
+            },
+          ),
+          ListTile(
             title: const Text('Time to fast forward and rewind'),
             subtitle: Text('${s.seekStepSeconds} seconds'),
             trailing: SizedBox(

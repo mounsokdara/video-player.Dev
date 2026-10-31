@@ -340,8 +340,10 @@ open class MainActivity : FlutterActivity() {
                             val title = call.argument<String>("title") ?: "frame"
                             val bytes = call.argument<ByteArray>("bytes")
                                 ?: return@setMethodCallHandler result.error("ARG", "bytes", null)
+                            val ext = call.argument<String>("ext") ?: "jpg"
+                            val mime = call.argument<String>("mime") ?: "image/jpeg"
                             io.execute {
-                                val saved = saveJpegBytes(bytes, title)
+                                val saved = saveImageBytes(bytes, title, ext, mime)
                                 mainHandler.post { result.success(saved) }
                             }
                         }
@@ -350,8 +352,10 @@ open class MainActivity : FlutterActivity() {
                             val path = call.argument<String>("path")
                                 ?: return@setMethodCallHandler result.error("ARG", "path", null)
                             val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
+                            val ext = call.argument<String>("ext") ?: "jpg"
+                            val mime = call.argument<String>("mime") ?: "image/jpeg"
                             io.execute {
-                                val saved = captureFrame(path, positionMs, title)
+                                val saved = captureFrame(path, positionMs, title, ext, mime)
                                 mainHandler.post { result.success(saved) }
                             }
                         }
@@ -527,7 +531,7 @@ open class MainActivity : FlutterActivity() {
         return null
     }
 
-    private fun captureFrame(path: String, positionMs: Long, title: String): String? {
+    private fun captureFrame(path: String, positionMs: Long, title: String, ext: String, mime: String): String? {
         val retriever = MediaMetadataRetriever()
         return try {
             val file = File(path)
@@ -536,9 +540,10 @@ open class MainActivity : FlutterActivity() {
                 ?: retriever.frameAtTime
                 ?: return null
             val out = java.io.ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+            val format = if (mime == "image/png") Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+            bitmap.compress(format, 95, out)
             bitmap.recycle()
-            saveJpegBytes(out.toByteArray(), title)
+            saveImageBytes(out.toByteArray(), title, ext, mime)
         } catch (_: Exception) {
             null
         } finally {
@@ -1025,40 +1030,40 @@ open class MainActivity : FlutterActivity() {
         return out.toByteArray()
     }
 
-    private fun saveJpegBytes(bytes: ByteArray, title: String): String? {
+    private fun saveImageBytes(bytes: ByteArray, title: String, ext: String, mime: String): String? {
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val safe = title.replace(Regex("[^A-Za-z0-9._-]"), "_").take(40)
-        val name = "VID_${stamp}_$safe.jpg"
+        val name = "VID_${stamp}_$safe.$ext"
         if (Build.VERSION.SDK_INT >= 29) {
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, name)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.MIME_TYPE, mime)
                 put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/Screenshots")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
             val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                ?: return writeLegacyBytes(bytes, name)
+                ?: return writeLegacyBytes(bytes, name, mime)
             return try {
                 contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                    ?: return writeLegacyBytes(bytes, name)
+                    ?: return writeLegacyBytes(bytes, name, mime)
                 values.clear()
                 values.put(MediaStore.Images.Media.IS_PENDING, 0)
                 contentResolver.update(uri, values, null, null)
                 uri.toString()
             } catch (_: Exception) {
-                writeLegacyBytes(bytes, name)
+                writeLegacyBytes(bytes, name, mime)
             }
         }
-        return writeLegacyBytes(bytes, name)
+        return writeLegacyBytes(bytes, name, mime)
     }
 
-    private fun writeLegacyBytes(bytes: ByteArray, name: String): String? {
+    private fun writeLegacyBytes(bytes: ByteArray, name: String, mime: String): String? {
         return try {
             val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Screenshots")
             if (!dir.exists()) dir.mkdirs()
             val file = File(dir, name)
             FileOutputStream(file).use { it.write(bytes) }
-            MediaScannerConnection.scanFile(this, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null)
+            MediaScannerConnection.scanFile(this, arrayOf(file.absolutePath), arrayOf(mime), null)
             file.absolutePath
         } catch (_: Exception) {
             null

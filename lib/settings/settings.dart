@@ -32,6 +32,7 @@ class AppSettings {
 
   // Playback
   DecoderMode decoder = DecoderMode.hw;
+  ScreenshotFormat screenshotFormat = ScreenshotFormat.jpg;
   bool hwPriority = true;
   int seekStepSeconds = 10;
   bool autoMiniplayer = false;
@@ -226,6 +227,7 @@ class AppSettings {
       rotation = RotationLock.values[(p.getInt('rotation') ?? RotationLock.none.index).clamp(0, RotationLock.values.length - 1)];
     }
     decoder = DecoderMode.values[(p.getInt('decoder') ?? 1).clamp(0, DecoderMode.values.length - 1)];
+    screenshotFormat = ScreenshotFormat.values[(p.getInt('screenshotFormat') ?? ScreenshotFormat.jpg.index).clamp(0, ScreenshotFormat.values.length - 1)];
     hwPriority = p.getBool('hwPriority') ?? true;
     seekStepSeconds = p.getInt('seekStepSeconds') ?? 10;
     autoMiniplayer = p.getBool('autoMiniplayer') ?? false;
@@ -396,6 +398,7 @@ class AppSettings {
     await p.setBool('showSeekPreview', showSeekPreview);
     await p.setInt('rotation', rotation.index);
     await p.setInt('decoder', decoder.index);
+    await p.setInt('screenshotFormat', screenshotFormat.index);
     await p.setBool('hwPriority', hwPriority);
     await p.setInt('seekStepSeconds', seekStepSeconds);
     await p.setBool('autoMiniplayer', autoMiniplayer);

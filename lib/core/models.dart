@@ -47,6 +47,17 @@ extension RotationLockLabel on RotationLock {
 
 enum DecoderMode { auto, hw, sw }
 
+enum ScreenshotFormat {
+  png('png', 'image/png', 'PNG (lossless)'),
+  jpg('jpg', 'image/jpeg', 'JPG'),
+  jpeg('jpeg', 'image/jpeg', 'JPEG');
+
+  const ScreenshotFormat(this.ext, this.mime, this.label);
+  final String ext;
+  final String mime;
+  final String label;
+}
+
 enum ThemeModePref { system, light, dark }
 
 enum PlaylistUiStyle { sheet, youtube }

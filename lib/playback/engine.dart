@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import 'package:video_player_app/core/developer_log.dart';
+import 'package:video_player_app/core/models.dart';
 import 'package:video_player_app/playback/render_profile.dart';
 import 'package:video_player_app/settings/settings.dart';
 
@@ -65,12 +66,12 @@ class PlaybackEngine extends ChangeNotifier {
 
   bool get hasPlayer => _player != null && !_closed;
 
-  /// JPEG of the current video frame (no UI, no subtitles) straight from mpv.
-  Future<Uint8List?> screenshot() async {
+  /// Encoded image (PNG or JPEG) of the current video frame (no UI, no subtitles) straight from mpv.
+  Future<Uint8List?> screenshot(ScreenshotFormat format) async {
     final p = _player;
     if (p == null || _closed) return null;
     try {
-      return await p.screenshot(format: 'image/jpeg');
+      return await p.screenshot(format: format.mime);
     } catch (_) {
       return null;
     }

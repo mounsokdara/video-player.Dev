@@ -1,3 +1,4 @@
 v1.0.4 (2026-10-31)
 • Fix screenshot: it now captures the video frame instead of the whole screen
 • Removed unused screenshot code
+• New setting: screenshot format (PNG, JPG or JPEG)

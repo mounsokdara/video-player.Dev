@@ -353,23 +353,27 @@ class AndroidBridge {
     } catch (_) {}
   }
 
-  static Future<String?> saveScreenshot(Uint8List jpeg, {String? title}) async {
+  static Future<String?> saveScreenshot(Uint8List image, {String? title, required ScreenshotFormat format}) async {
     try {
       return await _ch.invokeMethod<String>('saveScreenshot', {
         'title': title ?? 'frame',
-        'bytes': jpeg,
+        'bytes': image,
+        'ext': format.ext,
+        'mime': format.mime,
       });
     } catch (_) {
       return null;
     }
   }
 
-  static Future<String?> extractFrame({required String path, String? title, int positionMs = 0}) async {
+  static Future<String?> extractFrame({required String path, required ScreenshotFormat format, String? title, int positionMs = 0}) async {
     try {
       return await _ch.invokeMethod<String>('extractFrame', {
         'title': title ?? 'frame',
         'path': path,
         'positionMs': positionMs,
+        'ext': format.ext,
+        'mime': format.mime,
       });
     } catch (_) {
       return null;

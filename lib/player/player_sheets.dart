@@ -636,14 +636,15 @@ extension PlayerSheets on _PlayerPageState {
     final path = item.path;
     final title = item.title;
     final pos = engine?.value.position.inMilliseconds ?? 0;
+    final format = appSettings.screenshotFormat;
     _flash('Saving');
     unawaited(() async {
       String? saved;
-      final jpeg = await engine?.screenshot();
-      if (jpeg != null && jpeg.isNotEmpty) {
-        saved = await AndroidBridge.saveScreenshot(jpeg, title: title);
+      final image = await engine?.screenshot(format);
+      if (image != null && image.isNotEmpty) {
+        saved = await AndroidBridge.saveScreenshot(image, title: title, format: format);
       }
-      saved ??= await AndroidBridge.extractFrame(path: path, title: title, positionMs: pos);
+      saved ??= await AndroidBridge.extractFrame(path: path, title: title, positionMs: pos, format: format);
       if (!mounted) return;
       if (saved != null) {
         _flash('Saved to DCIM/Screenshots');
