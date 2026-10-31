@@ -569,10 +569,18 @@ class PlaybackEngine extends ChangeNotifier {
     if (p == null) return;
     _busy++;
     try {
-      if (on) {
-        await p.play(synchronized: false);
+      final platform = p.platform;
+      if (platform is NativePlayer) {
+        // Skips media_kit's shared lock so a slow seek or open can't delay play/pause.
+        if (on) {
+          await platform.play(synchronized: false);
+        } else {
+          await platform.pause(synchronized: false);
+        }
+      } else if (on) {
+        await p.play();
       } else {
-        await p.pause(synchronized: false);
+        await p.pause();
       }
     } catch (_) {
     } finally {
