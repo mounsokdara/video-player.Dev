@@ -457,7 +457,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           items: visible,
           onSearch: (_) {
             Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => SearchPage(onOpen: _open, onToggleSelect: _toggleSelect),
+              builder: (_) => SearchPage(onOpen: _open),
             ));
           },
           onQuery: (v) => setState(() => query = v),
@@ -644,7 +644,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             items: visible,
             onSearch: (_) {
               Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => SearchPage(onOpen: _open, onToggleSelect: _toggleSelect),
+                builder: (_) => SearchPage(onOpen: _open),
               ));
             },
             onQuery: (v) => setState(() => query = v),
@@ -1517,9 +1517,8 @@ class FoldersHub extends StatelessWidget {
 }
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key, required this.onOpen, required this.onToggleSelect});
+  const SearchPage({super.key, required this.onOpen});
   final Future<void> Function(VideoItem item, {List<VideoItem>? playlist}) onOpen;
-  final void Function(VideoItem) onToggleSelect;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -1527,7 +1526,10 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final ctrl = TextEditingController();
+  final picked = <String>{};
   String query = '';
+
+  bool get selecting => picked.isNotEmpty;
 
   @override
   void dispose() {
@@ -1535,42 +1537,105 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  void _toggle(VideoItem item) {
+    setState(() {
+      if (!picked.remove(item.id)) picked.add(item.id);
+    });
+  }
+
+  void _toggleAll(List<VideoItem> items) {
+    setState(() {
+      final allOn = items.isNotEmpty && items.every((v) => picked.contains(v.id));
+      if (allOn) {
+        picked.removeAll(items.map((v) => v.id));
+      } else {
+        picked.addAll(items.map((v) => v.id));
+      }
+    });
+  }
+
+  Future<void> _menu() {
+    final chosen = library.videos.where((v) => picked.contains(v.id)).toList();
+    return showItemsMenu(
+      context,
+      items: chosen,
+      allowRename: chosen.length == 1,
+      fromSelection: true,
+      onChanged: () {
+        if (!mounted) return;
+        setState(() => picked.removeWhere((id) => library.videos.every((v) => v.id != id)));
+      },
+      onPlay: (list) => widget.onOpen(list.first, playlist: list),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = library.sorted(SortBy.name, desc: false, query: query);
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Search videos', border: InputBorder.none),
-          onChanged: (v) => setState(() => query = v),
+    final allOn = items.isNotEmpty && items.every((v) => picked.contains(v.id));
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && selecting) setState(picked.clear);
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          leading: selecting
+              ? IconButton(icon: const Icon(Icons.close), tooltip: 'Cancel', onPressed: () => setState(picked.clear))
+              : null,
+          title: selecting
+              ? GestureDetector(
+                  onLongPress: () => _menu(),
+                  child: Text('${picked.length} selected'),
+                )
+              : TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  decoration: const InputDecoration(hintText: 'Search videos', border: InputBorder.none),
+                  onChanged: (v) => setState(() => query = v),
+                ),
+          actions: [
+            if (selecting) ...[
+              IconButton(
+                icon: Icon(allOn ? Icons.deselect : Icons.select_all),
+                tooltip: allOn ? 'Deselect all' : 'Select all results',
+                onPressed: () => _toggleAll(items),
+              ),
+              IconButton(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'Actions',
+                onPressed: () => _menu(),
+              ),
+            ],
+          ],
         ),
+        body: items.isEmpty
+            ? const Center(child: Text('No matches'))
+            : ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.only(bottom: MediaQuery.viewPaddingOf(context).bottom + 24),
+                itemCount: items.length,
+                itemBuilder: (_, i) {
+                  final item = items[i];
+                  return VideoListTile(
+                    item: item,
+                    selected: picked.contains(item.id),
+                    selecting: selecting,
+                    onTap: () => selecting ? _toggle(item) : widget.onOpen(item, playlist: items),
+                    onLongPress: () {
+                      FocusScope.of(context).unfocus();
+                      if (selecting) {
+                        if (!picked.contains(item.id)) _toggle(item);
+                        _menu();
+                      } else {
+                        _toggle(item);
+                      }
+                    },
+                  );
+                },
+              ),
       ),
-      body: items.isEmpty
-          ? const Center(child: Text('No matches'))
-          : ListView.builder(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.only(bottom: MediaQuery.viewPaddingOf(context).bottom + 24),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final item = items[i];
-                return VideoListTile(
-                  item: item,
-                  selected: false,
-                  selecting: false,
-                  onTap: () => widget.onOpen(item, playlist: items),
-                  onLongPress: () => showItemsMenu(
-                    context,
-                    items: [item],
-                    allowRename: true,
-                    onChanged: () { if (mounted) setState(() {}); },
-                    onPlay: (picked) => widget.onOpen(picked.first, playlist: items),
-                  ),
-                );
-              },
-            ),
     );
   }
 }
