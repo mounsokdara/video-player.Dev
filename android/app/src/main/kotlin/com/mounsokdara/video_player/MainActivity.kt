@@ -95,6 +95,7 @@ open class MainActivity : FlutterActivity() {
         libraryWatcher = null
         bindPreview(null)
         audioFocus.release()
+        com.mounsokdara.video_player.engine.EngineBridge.release(flutterEngine)
         super.onDestroy()
     }
 
@@ -121,6 +122,7 @@ open class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        com.mounsokdara.video_player.engine.EngineBridge.register(this, flutterEngine)
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, eventName)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {

@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Built by scripts/build_ffmpeg.sh (decode-only FFmpeg, per ABI)
+/android/app/src/main/cpp/ffmpeg/
+/.ffmpeg-src/

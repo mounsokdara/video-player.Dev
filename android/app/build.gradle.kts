@@ -47,6 +47,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Our own engine's software decoder (FFmpeg decode-only static libs + JNI). The libs come from
+    // scripts/build_ffmpeg.sh; without them the module builds as a stub.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.mounsokdara.video_player"
         minSdk = 24
@@ -54,7 +62,7 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
 
-        // Plugin libraries (libmpv, ffmpeg) are packed for every CPU unless filtered here, so each
+        // Plugin libraries are packed for every CPU unless filtered here, so each
         // split APK would be as big as the universal one. The list comes from ABI_FILTER (set by the
         // CI workflow) or, as a fallback, from the -Ptarget-platform property Flutter passes.
         // With --split-per-abi the splits do this job (one APK per CPU).
@@ -62,6 +70,14 @@ android {
             ndk {
                 abiFilters.clear()
                 abiFilters.addAll(selectedAbis)
+            }
+        }
+        // Build the JNI module only for the CPUs being packaged (flutter's --target-platform / split builds).
+        externalNativeBuild {
+            cmake {
+                val cmakeAbis = if (selectedAbis.isNotEmpty()) selectedAbis else listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+                abiFilters.addAll(cmakeAbis)
+                arguments += listOf("-DANDROID_STL=c++_static")
             }
         }
     }
