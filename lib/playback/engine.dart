@@ -105,6 +105,10 @@ class PlaybackEngine extends ChangeNotifier {
 
   bool get hasPlayer => _opened && !_closed;
 
+  /// Non-null once the engine has a picture surface (callers test `video != null` for "is there
+  /// video yet"). It is the id of the Flutter texture the decoder draws into.
+  int? get video => textureId;
+
   bool get _mine => identical(_NativeBus.owner, this) && !_closed;
 
   /// The frame is not available to Dart (it lives in a GPU texture), so there is nothing to save
