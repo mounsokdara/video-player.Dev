@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:flutter/services.dart';
 
 import 'package:video_player_app/core/developer_log.dart';
 import 'package:video_player_app/core/models.dart';
@@ -48,47 +46,75 @@ class EngineValue {
       );
 }
 
+/// Channel to our own playback engine (android/.../engine/NativePlayer.kt):
+/// MediaExtractor -> MediaCodec (or FFmpeg software decode) -> Flutter texture, AudioTrack for sound.
+/// There is one native player per Flutter engine, so the instance that opened last owns it.
+class _NativeBus {
+  static const method = MethodChannel('app.videoplayer/engine');
+  static const events = EventChannel('app.videoplayer/engine_events');
+  static StreamSubscription<dynamic>? _sub;
+  static PlaybackEngine? owner;
+
+  static void ensure() {
+    _sub ??= events.receiveBroadcastStream().listen(
+      (e) => owner?._onNative(e),
+      onError: (Object _) {},
+    );
+  }
+
+  static Future<T?> call<T>(String name, [Map<String, Object?>? args]) async {
+    try {
+      return await method.invokeMethod<T>(name, args);
+    } on PlatformException catch (e) {
+      DeveloperLog.append('engine $name failed: ${e.message}');
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+}
+
 class PlaybackEngine extends ChangeNotifier {
   static final _alive = <PlaybackEngine>{};
 
-  Player? _player;
-  VideoController? video;
-  final _subs = <StreamSubscription<dynamic>>[];
   EngineValue value = const EngineValue();
   bool _closed = false;
-  String? _hwdec;
+  bool _opened = false;
   Future<void>? _inFlight;
   double _rate = 1;
   bool _pitchShift = false;
+  double _volume = 1;
+  bool _looping = false;
   bool wantPlay = false;
   String debugInfo = '';
-  String? _codecWarn;
 
-  bool get hasPlayer => _player != null && !_closed;
+  // texture + decoder info (from the native open())
+  int? textureId;
+  int quarterTurns = 0;
+  Size displaySize = Size.zero;
+  String _decoder = '';
+  bool _software = false;
 
-  /// Saves the current video frame (no UI, no subtitles) with mpv's native encoder
-  /// and returns the temp file path. media_kit's own screenshot() loops over every
-  /// pixel in Dart and holds the player lock, which stalls play/pause meanwhile.
-  Future<String?> screenshotToFile(ScreenshotFormat format) async {
-    final p = _player;
-    if (p == null || _closed) return null;
-    final platform = p.platform;
-    if (platform is! NativePlayer) return null;
-    final path = '${Directory.systemTemp.path}/frame_${DateTime.now().microsecondsSinceEpoch}.${format == ScreenshotFormat.png ? 'png' : 'jpg'}';
-    try {
-      await platform.setProperty('screenshot-jpeg-quality', '95');
-      await platform.setProperty('screenshot-png-compression', '3');
-      await (platform as dynamic).command(['screenshot-to-file', path, 'video']);
-      final f = File(path);
-      if (await f.exists() && await f.length() > 0) return path;
-    } catch (_) {}
-    try {
-      File(path).deleteSync();
-    } catch (_) {}
-    return null;
-  }
+  // live state (from native 'state' events)
+  bool _nativePlaying = false;
+  Duration _pos = Duration.zero;
+  Duration _dur = Duration.zero;
+  bool _completed = false;
+  bool _fatal = false;
+  String? _fatalText;
 
-  String get hwdecName => _hwdec ?? 'unknown';
+  bool get hasPlayer => _opened && !_closed;
+
+  bool get _mine => identical(_NativeBus.owner, this) && !_closed;
+
+  /// The frame is not available to Dart (it lives in a GPU texture), so there is nothing to save
+  /// here. The caller falls back to the native frame extractor (AndroidBridge.extractFrame).
+  Future<String?> screenshotToFile(ScreenshotFormat format) async => null;
+
+  String get hwdecName => _decoder.isEmpty ? 'unknown' : _decoder;
+
+  /// True while the FFmpeg software decoder is producing the picture.
+  bool get softwareDecode => _software;
 
   int _openSeq = 0;
   String? _pendingKey;
@@ -136,113 +162,83 @@ class PlaybackEngine extends ChangeNotifier {
     }
   }
 
+  String _source(String path) {
+    if (path.startsWith('content:') ||
+        path.startsWith('http:') ||
+        path.startsWith('https:') ||
+        path.startsWith('file:')) {
+      return path;
+    }
+    return path; // plain file path: the native side opens it directly
+  }
+
   Future<void> _openBody(String path, {required String hwdec}) async {
     _closed = false;
     _alive.add(this);
     await _pauseOthers();
+    _NativeBus.ensure();
+    _NativeBus.owner = this;
     value = const EngineValue();
+    _resetPerFile();
     notifyListeners();
-    if (_player == null) {
-      final player = Player(
-        configuration: const PlayerConfiguration(
-          pitch: false,
-          title: 'Video Player',
-          logLevel: MPVLogLevel.warn,
-        ),
-      );
-      _player = player;
-      video = VideoController(
-        player,
-        configuration: VideoControllerConfiguration(
-          enableHardwareAcceleration: true,
-          hwdec: hwdec,
-          androidAttachSurfaceAfterVideoParameters: true,
-        ),
-      );
-      _bind(player);
-    }
-    final player = _player!;
-    _hwdec = hwdec;
-    await _applyHwdec(player, hwdec);
-    await _resetPerFile(player);
-    await _applyPitchCorrection(player, _pitchShift);
-    await player.open(Media(_mediaUri(path)), play: false);
-    await _waitReady(player);
-    final decoded = await _prepareRender(player);
-    if (!decoded && _codecWarn != null && !value.hasError) {
-      value = EngineValue(hasError: true, errorDescription: _codecWarn);
+
+    Map<dynamic, dynamic>? info;
+    try {
+      info = await _NativeBus.method.invokeMapMethod<dynamic, dynamic>('open', {
+        'path': _source(path),
+        'preferSoftware': hwdec == 'no',
+      });
+    } on PlatformException catch (e) {
+      final text = e.message ?? 'Source error';
+      value = EngineValue(hasError: true, errorDescription: text);
       notifyListeners();
+      DeveloperLog.player('open error=$text');
+      throw StateError(text);
     }
-    await player.setRate(_rate <= 0 ? 1 : _rate);
-    _emit(player);
-    if (value.hasError) {
-      DeveloperLog.player('open error=' + (value.errorDescription ?? 'Source error'));
-      throw StateError(value.errorDescription ?? 'Source error');
-    }
+    if (_closed || !_mine) return;
+    _opened = true;
+
+    final i = info ?? const {};
+    _dur = Duration(milliseconds: (i['durationMs'] as num?)?.toInt() ?? 0);
+    final w = (i['width'] as num?)?.toInt() ?? 0;
+    final h = (i['height'] as num?)?.toInt() ?? 0;
+    quarterTurns = ((((i['rotation'] as num?)?.toInt() ?? 0) ~/ 90) % 4 + 4) % 4;
+    final turned = quarterTurns.isOdd;
+    displaySize = (w > 0 && h > 0) ? (turned ? Size(h.toDouble(), w.toDouble()) : Size(w.toDouble(), h.toDouble())) : Size.zero;
+    final tex = (i['textureId'] as num?)?.toInt() ?? -1;
+    textureId = tex >= 0 ? tex : null;
+    _decoder = (i['decoder'] as String?) ?? '';
+    _software = (i['software'] as bool?) ?? false;
+    _src = _sourceFrom(i);
+    await _prepareRender();
+
+    await _NativeBus.call('setVolume', {'value': _volume});
+    await _pushTempo();
+    _emit();
+    DeveloperLog.append('engine ready decoder=$_decoder software=$_software ${_src?.describe() ?? ''}');
   }
+
+  // ---------- tempo ----------
 
   Future<void> applyTempo({required double rate, required bool pitchShift}) async {
     DeveloperLog.player('tempo rate=$rate pitchShift=$pitchShift');
     _rate = rate.clamp(0.25, 8.0).toDouble();
     _pitchShift = pitchShift;
-    final player = _player;
-    if (player == null) return;
-    await _applyPitchCorrection(player, pitchShift);
-    try {
-      await player.setRate(_rate);
-    } catch (_) {}
+    if (_mine) await _pushTempo();
   }
 
-  Future<void> _applyPitchCorrection(Player player, bool pitchShift) async {
-    try {
-      final platform = player.platform;
-      if (platform is NativePlayer) {
-        await platform.setProperty('audio-pitch-correction', pitchShift ? 'no' : 'yes');
-      }
-    } catch (_) {}
+  // Pitch shift on: pitch follows speed (tape style). Off: pitch is preserved at any speed.
+  Future<void> _pushTempo() async {
+    final rate = _rate <= 0 ? 1.0 : _rate;
+    await _NativeBus.call('setSpeed', {'value': rate});
+    await _NativeBus.call('setPitch', {'value': _pitchShift ? rate : 1.0});
   }
 
-  Future<void> _applyHwdec(Player player, String hwdec) async {
-    try {
-      final platform = player.platform;
-      if (platform is NativePlayer) {
-        await platform.setProperty('hwdec', hwdec);
-        try {
-          await platform.setProperty('hwdec-codecs', 'h264,hevc,vp8,vp9,av1,mpeg4,mpeg2video');
-        } catch (_) {}
-        try {
-          await platform.setProperty('video-sync', 'audio');
-        } catch (_) {}
-        try {
-          await platform.setProperty('vd-lavc-dr', 'no');
-        } catch (_) {}
-        return;
-      }
-      await (platform as dynamic).setProperty('hwdec', hwdec);
-    } catch (_) {}
-  }
-
-  Future<void> _setProp(Player player, String name, String value) async {
-    try {
-      final platform = player.platform;
-      if (platform is NativePlayer) await platform.setProperty(name, value);
-    } catch (_) {}
-  }
-
-  Future<String> _getProp(Player player, String name) async {
-    try {
-      final platform = player.platform;
-      if (platform is NativePlayer) {
-        return (await platform.getProperty(name)).trim().toLowerCase();
-      }
-    } catch (_) {}
-    return '';
-  }
+  // ---------- render / HDR ----------
 
   SourceInfo? _src;
   bool _convert = false;
   bool _sdrMode = false;
-  String? _lastVf;
 
   bool get hdrActive => _convert;
 
@@ -250,241 +246,154 @@ class PlaybackEngine extends ChangeNotifier {
 
   SourceInfo? get source => _src;
 
-  Future<void> _resetPerFile(Player player) async {
+  void _resetPerFile() {
     _src = null;
     _convert = false;
-    _lastVf = null;
     debugInfo = '';
-    _codecWarn = null;
-    await _setProp(player, 'vf', '');
-    await _setProp(player, 'tone-mapping', 'auto');
-    await _setProp(player, 'hdr-compute-peak', 'auto');
-    await _setProp(player, 'target-peak', 'auto');
-    await _setProp(player, 'target-trc', 'auto');
-    await _setProp(player, 'target-prim', 'auto');
-    await _setProp(player, 'gamut-mapping-mode', 'auto');
-    await _setProp(player, 'gamma', '0');
-    await _setProp(player, 'video-output-levels', 'auto');
-    await _setProp(player, 'dither-depth', 'no');
+    textureId = null;
+    _decoder = '';
+    _software = false;
+    _completed = false;
+    _fatal = false;
+    _fatalText = null;
+    _pos = Duration.zero;
+    _dur = Duration.zero;
+    _nativePlaying = false;
+    _seekTarget = null;
   }
 
-  Future<SourceInfo> _probeSource(Player player) async {
-    var pix = '';
-    var gamma = '';
-    for (var i = 0; i < 30 && !_closed; i++) {
-      pix = await _getProp(player, 'video-params/pixelformat');
-      gamma = await _getProp(player, 'video-params/gamma');
-      if (pix.isNotEmpty && gamma.isNotEmpty) break;
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+  /// Translates what the native engine knows about the stream into the app's SourceInfo.
+  SourceInfo _sourceFrom(Map<dynamic, dynamic> i) {
+    final bits = (i['bitDepth'] as num?)?.toInt() ?? 8;
+    final hasVideo = (i['hasVideo'] as bool?) ?? false;
+    final transfer = (i['colorTransfer'] as num?)?.toInt();
+    final std = (i['colorStandard'] as num?)?.toInt();
+    final cll = (i['maxCll'] as num?)?.toDouble() ?? 0;
+    final lum = (i['maxLuminance'] as num?)?.toDouble() ?? 0;
+    final peak = cll > 0 ? cll : lum;
+    String prim = '', matrix = '';
+    switch (std) {
+      case 6:
+        prim = 'bt.2020';
+        matrix = 'bt.2020-ncl';
+      case 1:
+        prim = 'bt.709';
+        matrix = 'bt.709';
+      case 2:
+      case 4:
+        prim = 'bt.601';
+        matrix = 'bt.601';
     }
-    Future<double?> numOf(String name) async => double.tryParse(await _getProp(player, name));
+    final gamma = switch (transfer) {
+      7 => 'hlg',
+      6 => 'pq',
+      3 => 'bt.1886',
+      _ => hasVideo ? 'bt.1886' : '',
+    };
     return SourceInfo(
-      pix: pix,
+      pix: !hasVideo ? '' : (bits >= 10 ? 'yuv420p10le' : 'yuv420p'),
       gamma: gamma,
-      primaries: await _getProp(player, 'video-params/primaries'),
-      matrix: await _getProp(player, 'video-params/colormatrix'),
-      sigPeak: await _getProp(player, 'video-params/sig-peak'),
-      w: ((await numOf('video-params/w')) ?? 0).round(),
-      h: ((await numOf('video-params/h')) ?? 0).round(),
-      fps: (await numOf('container-fps')) ?? (await numOf('estimated-vf-fps')) ?? 0,
+      primaries: prim,
+      matrix: matrix,
+      sigPeak: peak > 0 ? (peak / 203).toStringAsFixed(2) : '',
+      w: displaySize.width.round(),
+      h: displaySize.height.round(),
+      fps: (i['fps'] as num?)?.toDouble() ?? 0,
     );
   }
 
-  Future<bool> _prepareRender(Player player) async {
+  Future<void> _prepareRender() async {
     final rs = RenderSettings.instance;
     await rs.load();
-    if (_closed) return true;
-    final src = await _probeSource(player);
-    _src = src;
+    final src = _src;
+    if (_closed || src == null) return;
     _convert = src.needsConvert;
     _sdrMode = appSettings.rememberHdr && !appSettings.hdrOn;
-    DeveloperLog.append('video ${src.describe()} hwdec=$_hwdec');
-    DeveloperLog.player('source ${src.describe()} hwdec=$_hwdec');
-    if (_convert) {
-      await _setProp(player, 'hwdec', 'no');
-    }
-    await _applyRender(player);
-    if (_convert) {
-      try {
-        await player.seek(player.state.position);
-      } catch (_) {}
-    }
-    return src.decoded;
+    DeveloperLog.append('video ${src.describe()} decoder=$_decoder');
+    await _pushTuning();
+    _describe();
   }
 
-  Future<void> _applyRender(Player player) async {
+  void _describe() {
     final src = _src;
-    if (src == null || _closed) return;
-    final plan = RenderProfile.plan(
-      settings: RenderSettings.instance,
-      src: src,
-    );
-    await _applyVf(player, plan);
-    if (_convert) await _pushTuning(player);
+    if (src == null) return;
     final mode = _convert ? (_sdrMode ? 'HDR->SDR' : 'HDR look') : 'SDR source';
-    debugInfo = '$mode | ${plan.describe(src)} | ${src.describe()}';
+    debugInfo = '$mode | ${src.w}x${src.h} ${src.fps.toStringAsFixed(0)}fps | ${_software ? 'software' : 'hardware'} | ${src.describe()}';
     DeveloperLog.append('render $debugInfo');
     notifyListeners();
   }
 
-  void _markFilterUnsupported(String name, String detail) {
-    if (RenderCaps.of(name) == false) return;
-    if (RenderCaps.of(name) != null && RenderCaps.of(name) != false) return;
-    if (name != 'fps' && name != 'scale') return;
-    RenderCaps.set(name, false);
-    DeveloperLog.append('render: the $name filter is not available in this libmpv build ($detail)');
-    unawaited(reapplyRender());
-  }
-
-  Future<void> _applyVf(Player player, RenderPlan plan) async {
-    if (_lastVf == plan.key) return;
-    await _setProp(player, 'vf', plan.key);
-    _lastVf = plan.key;
-  }
-
-  Future<void> _pushTuning(Player player) async {
+  // The HDR "look" controls (peak / gamma) shape the software decoder's tone mapping.
+  Future<void> _pushTuning() async {
     final t = RenderSettings.instance.tuning(sdr: _sdrMode);
-    await _setProp(player, 'target-peak', '${t.peak}');
-    await _setProp(player, 'gamma', '${t.gamma}');
-    if (!_convert) {
-      await _setProp(player, 'target-peak', 'auto');
-      await _setProp(player, 'gamma', '${t.gamma}');
-    }
+    await _NativeBus.call('setTuning', {'peak': t.peak, 'gamma': t.gamma});
   }
 
   Future<void> retune() async {
-    final player = _player;
-    if (player == null || _closed || !_convert) return;
-    await _pushTuning(player);
+    if (!_mine || !_convert) return;
+    await _pushTuning();
   }
 
   Future<void> reapplyRender() async {
-    final player = _player;
-    if (player == null || _closed) return;
-    _lastVf = null;
-    await _applyRender(player);
+    if (!_mine) return;
+    await _pushTuning();
+    _describe();
   }
 
   Future<void> setSdrMode(bool sdr) async {
     _sdrMode = sdr;
     appSettings.hdrOn = !sdr;
     if (appSettings.rememberHdr) unawaited(appSettings.save());
-    final player = _player;
-    if (player != null && _convert && !_closed) await _pushTuning(player);
+    if (_mine && _convert) await _pushTuning();
     notifyListeners();
   }
 
-  String _mediaUri(String path) {
-    if (path.startsWith('content:') ||
-        path.startsWith('http:') ||
-        path.startsWith('https:') ||
-        path.startsWith('file:') ||
-        path.startsWith('rtsp:') ||
-        path.startsWith('rtmp:')) {
-      return path;
+  // ---------- native events ----------
+
+  void _onNative(dynamic e) {
+    if (e is! Map || _closed) return;
+    switch (e['type']) {
+      case 'state':
+        _nativePlaying = (e['playing'] as bool?) ?? _nativePlaying;
+        _pos = Duration(milliseconds: (e['positionMs'] as num?)?.toInt() ?? 0);
+        final d = (e['durationMs'] as num?)?.toInt() ?? 0;
+        if (d > 0) _dur = Duration(milliseconds: d);
+        if (_nativePlaying) _completed = false;
+        _emit();
+      case 'decoder':
+        _decoder = (e['name'] as String?) ?? _decoder;
+        _software = _decoder.startsWith('software');
+        DeveloperLog.append('decoder $_decoder');
+        _describe();
+      case 'ended':
+        if (_looping) {
+          unawaited(_NativeBus.call('play'));
+        } else {
+          _completed = true;
+          _nativePlaying = false;
+          _emit();
+        }
+      case 'error':
+        final text = (e['message'] as String?) ?? 'Playback error';
+        DeveloperLog.append('engine: $text');
+        if (e['fatal'] == true) {
+          _fatal = true;
+          _fatalText = text;
+          _emit();
+        }
     }
-    return Uri.file(path).toString();
   }
 
-  Future<void> _waitReady(Player player) async {
-    final start = DateTime.now();
-    while (DateTime.now().difference(start) < const Duration(seconds: 12)) {
-      if (_closed) return;
-      _emit(player);
-      if (value.hasError) return;
-      if (player.state.duration > Duration.zero || _pixels(player) > 0 || player.state.playing) {
-        return;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    }
-  }
-
-  int _pixels(Player player) {
-    final w = player.state.width ?? 0;
-    final h = player.state.height ?? 0;
-    if (w > 1 && h > 1) return w * h;
-    return 0;
-  }
-
-  Size _sizeOf(Player player) {
-    final w = player.state.width ?? 0;
-    final h = player.state.height ?? 0;
-    if (w > 1 && h > 1) return Size(w.toDouble(), h.toDouble());
-    return Size.zero;
-  }
-
-  void _bind(Player player) {
-    void push() => _emit(player);
-    _subs.addAll([
-      player.stream.playing.listen((_) => push()),
-      player.stream.completed.listen((done) {
-        if (!done) {
-          push();
-          return;
-        }
-        value = EngineValue(
-          isInitialized: true,
-          isPlaying: false,
-          isBuffering: false,
-          hasError: value.hasError,
-          completed: true,
-          errorDescription: value.errorDescription,
-          position: player.state.position,
-          duration: player.state.duration,
-          size: _sizeOf(player),
-        );
-        notifyListeners();
-      }),
-      player.stream.position.listen((_) => push()),
-      player.stream.duration.listen((_) => push()),
-      player.stream.buffering.listen((_) => push()),
-      player.stream.width.listen((_) => push()),
-      player.stream.height.listen((_) => push()),
-      player.stream.log.listen((e) {
-        final text = e.text.trim();
-        DeveloperLog.append('mpv[${e.prefix}] $text');
-        final m = RegExp("No such filter: '(\\w+)'").firstMatch(text);
-        if (m != null) _markFilterUnsupported(m.group(1)!, text);
-      }),
-      player.stream.error.listen((e) {
-        final low = e.toLowerCase();
-        if (low.contains('could not open codec')) {
-          _codecWarn = e;
-          DeveloperLog.append('non-fatal decoder message ignored: $e');
-          return;
-        }
-        if (low.startsWith('option ') || low.contains("doesn't exist")) {
-          DeveloperLog.append('non-fatal option message ignored: $e');
-          final m = RegExp(r"Option (?:vf|vo): (\w+) doesn't exist", caseSensitive: false).firstMatch(e);
-          if (m != null) _markFilterUnsupported(m.group(1)!, e);
-          return;
-        }
-        value = EngineValue(
-          isInitialized: value.isInitialized,
-          isPlaying: false,
-          hasError: true,
-          completed: false,
-          errorDescription: e,
-          position: value.position,
-          duration: value.duration,
-          size: value.size,
-        );
-        notifyListeners();
-      }),
-    ]);
-  }
-
-  // While a seek is in flight mpv reports the old position and the target
-  // alternately, which made the seek bar ping-pong. After a seek we publish the
-  // target and ignore mpv's position until it settles near the target.
+  // While a seek is in flight we show the target instead of the position that is about to be
+  // replaced, so the seek bar does not jump back and forth. It settles near the target.
   Duration? _seekTarget;
   DateTime _seekAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const _seekMinHold = Duration(milliseconds: 250);
   static const _seekMaxHold = Duration(milliseconds: 1200);
   static const _seekTolerance = Duration(milliseconds: 1200);
 
-  Duration _shownPosition(Player player) {
-    final real = player.state.position;
+  Duration _shownPosition() {
+    final real = _pos;
     final target = _seekTarget;
     if (target == null) return real;
     final age = DateTime.now().difference(_seekAt);
@@ -495,85 +404,89 @@ class PlaybackEngine extends ChangeNotifier {
     return target;
   }
 
-  void _emit(Player player) {
-    if (value.hasError) return;
-    final size = _sizeOf(player);
-    final ready = player.state.duration > Duration.zero || size.width > 1 || player.state.playing;
-    final playing = player.state.playing;
+  void _emit() {
+    if (_closed) return;
+    if (_fatal) {
+      value = EngineValue(
+        isInitialized: value.isInitialized,
+        hasError: true,
+        errorDescription: _fatalText,
+        position: value.position,
+        duration: value.duration,
+        size: value.size,
+      );
+      notifyListeners();
+      return;
+    }
     value = EngineValue(
-      isInitialized: ready,
-      isPlaying: playing,
-      isBuffering: player.state.buffering,
+      isInitialized: _opened,
+      isPlaying: _nativePlaying,
+      isBuffering: false,
       hasError: false,
-      completed: playing ? false : value.completed,
-      position: _shownPosition(player),
-      duration: player.state.duration,
-      size: size,
+      completed: _completed,
+      position: _completed ? _dur : _shownPosition(),
+      duration: _dur,
+      size: displaySize,
     );
     notifyListeners();
   }
+
+  // ---------- transport ----------
 
   Future<void> play() async {
     DeveloperLog.player('play');
     wantPlay = true;
     _alive.add(this);
     await _pauseOthers();
-    await _player?.play();
+    if (!_mine) return;
+    await _NativeBus.call('play');
   }
 
   Future<void> pause() async {
     DeveloperLog.player('pause');
     wantPlay = false;
-    await _player?.pause();
+    if (_mine) await _NativeBus.call('pause');
   }
 
   Future<void> _pauseOthers() async {
     final others = _alive.where((e) => !identical(e, this) && !e._closed).toList();
     for (final e in others) {
       e.wantPlay = false;
-      try {
-        await e._player?.pause();
-      } catch (_) {}
+      e._nativePlaying = false;
+      e._emit();
     }
   }
 
   /// [fast] snaps to the nearest keyframe instead of decoding up to the exact
   /// frame. Use it for scrubbing; exact seeks are slow on long-GOP or
-  /// software-decoded (HDR conversion) video.
+  /// software-decoded video.
   Future<void> seekTo(Duration d, {bool fast = false}) async {
-    DeveloperLog.player('seek ' + d.inMilliseconds.toString() + 'ms' + (fast ? ' (keyframe)' : ''));
-    final player = _player;
-    if (player == null) return;
+    DeveloperLog.player('seek ${d.inMilliseconds}ms${fast ? ' (keyframe)' : ''}');
+    if (!hasPlayer || !_mine) return;
     _seekTarget = d;
     _seekAt = DateTime.now();
+    _completed = false;
     if (!value.hasError) {
       value = value.withPosition(d);
       notifyListeners();
     }
-    if (fast) {
-      try {
-        final platform = player.platform;
-        if (platform is NativePlayer) {
-          await (platform as dynamic).command(['seek', (d.inMilliseconds / 1000).toStringAsFixed(3), 'absolute+keyframes']);
-          return;
-        }
-      } catch (_) {}
-    }
-    await player.seek(d);
+    await _NativeBus.call('seek', {'positionMs': d.inMilliseconds, 'accurate': !fast});
   }
 
   Future<void> setVolume(double v) async {
-    await _player?.setVolume((v.clamp(0.0, 1.0) * 100).toDouble());
+    _volume = v.clamp(0.0, 1.0).toDouble();
+    if (_mine) await _NativeBus.call('setVolume', {'value': _volume});
   }
 
   Future<void> setLooping(bool on) async {
-    DeveloperLog.player('looping=' + on.toString());
-    await _player?.setPlaylistMode(on ? PlaylistMode.single : PlaylistMode.none);
+    DeveloperLog.player('looping=$on');
+    _looping = on;
   }
 
   Future<void> close() async {
     if (_closed) return;
     DeveloperLog.player('close');
+    final wasOwner = identical(_NativeBus.owner, this);
     _closed = true;
     _seekTarget = null;
     wantPlay = false;
@@ -585,46 +498,21 @@ class PlaybackEngine extends ChangeNotifier {
         await inFlight.timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
-    await _disposePlayer();
+    // Only stop the native player if a newer engine did not already take it over.
+    if (wasOwner && identical(_NativeBus.owner, this)) {
+      _NativeBus.owner = null;
+      await _NativeBus.call('stop');
+    }
+    _opened = false;
+    textureId = null;
+    value = const EngineValue();
+    notifyListeners();
     super.dispose();
   }
 
   @override
   void dispose() {
     unawaited(close());
-  }
-
-  Future<void> _disposePlayer() async {
-    _alive.remove(this);
-    for (final s in _subs) {
-      try {
-        await s.cancel();
-      } catch (_) {}
-    }
-    _subs.clear();
-    final p = _player;
-    _player = null;
-    video = null;
-    _hwdec = null;
-    value = const EngineValue();
-    notifyListeners();
-    if (p == null) return;
-    try {
-      await p.pause();
-    } catch (_) {}
-    try {
-      final platform = p.platform;
-      if (platform is NativePlayer) {
-        await platform.setProperty('vo', 'null');
-      }
-    } catch (_) {}
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    try {
-      await p.stop();
-    } catch (_) {}
-    try {
-      await p.dispose();
-    } catch (_) {}
   }
 }
 
@@ -677,7 +565,7 @@ class VideoLogOverlay extends StatelessWidget {
       lines.add('RENDER ${engine.sdrMode ? 'SDR' : 'HDR'} mode · ${engine.debugInfo.isEmpty ? '-' : engine.debugInfo}');
     }
     if (appSettings.videoLogShowDecoder) {
-      lines.add('DECODER ${engine.hwdecName} · hw=${engine.hwdecName != 'no'}');
+      lines.add('DECODER ${engine.hwdecName} · hw=${!engine.softwareDecode}');
     }
     if (appSettings.videoLogShowTiming) {
       lines.add('SCREEN ${screen.width.round()}×${screen.height.round()} · ${screen.hz.toStringAsFixed(1)}Hz');
@@ -706,13 +594,13 @@ class VideoLogOverlay extends StatelessWidget {
 }
 
 class _AppVideoState extends State<AppVideo> {
-  VideoController? _controller;
+  int? _texture;
   String _info = '';
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.engine.video;
+    _texture = widget.engine.textureId;
     widget.engine.addListener(_onEngine);
   }
 
@@ -722,7 +610,7 @@ class _AppVideoState extends State<AppVideo> {
     if (!identical(oldWidget.engine, widget.engine)) {
       oldWidget.engine.removeListener(_onEngine);
       widget.engine.addListener(_onEngine);
-      _controller = widget.engine.video;
+      _texture = widget.engine.textureId;
     }
   }
 
@@ -733,11 +621,11 @@ class _AppVideoState extends State<AppVideo> {
   }
 
   void _onEngine() {
-    final next = widget.engine.video;
+    final next = widget.engine.textureId;
     final info = widget.engine.debugInfo;
-    if (mounted && (!identical(next, _controller) || info != _info)) {
+    if (mounted && (next != _texture || info != _info)) {
       setState(() {
-        _controller = next;
+        _texture = next;
         _info = info;
       });
     }
@@ -745,13 +633,26 @@ class _AppVideoState extends State<AppVideo> {
 
   @override
   Widget build(BuildContext context) {
-    final c = _controller;
-    if (c == null) return const ColoredBox(color: Colors.black);
-    final video = Video(
-      controller: c,
-      fill: Colors.black,
-      fit: widget.fit,
-      controls: NoVideoControls,
+    final id = _texture;
+    if (id == null) return const ColoredBox(color: Colors.black);
+    final size = widget.engine.displaySize;
+    final w = size.width > 1 ? size.width : 16.0;
+    final h = size.height > 1 ? size.height : 9.0;
+    // The texture holds the coded frame; the codec's rotation is applied here.
+    final video = ColoredBox(
+      color: Colors.black,
+      child: FittedBox(
+        fit: widget.fit,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: w,
+          height: h,
+          child: RotatedBox(
+            quarterTurns: widget.engine.quarterTurns,
+            child: Texture(textureId: id),
+          ),
+        ),
+      ),
     );
     if (!widget.showLog || !appSettings.developerEnabled || !appSettings.videoLogOverlay) return video;
     return Stack(

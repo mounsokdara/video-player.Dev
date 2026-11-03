@@ -788,7 +788,7 @@ class NativePlayer(
         videoDisabled = true
         needFirstFrame = false
         finishSeek()
-        emit(mapOf("type" to "error", "message" to "Software decoder failed at [$stage]: ${describe(e)}"))
+        emit(mapOf("type" to "error", "message" to "Software decoder failed at [$stage]: ${describe(e)}", "fatal" to (aCodec == null)))
     }
 
     /** A decoder died mid-stream: remember it and let ensureVideoCodec() pick the next candidate. */
@@ -806,11 +806,11 @@ class NativePlayer(
         needFirstFrame = false
         finishSeek()
         if (e is UnsupportedStreamException) {
-            emit(mapOf("type" to "error", "message" to (e.message ?: "No decoder for this video")))
+            emit(mapOf("type" to "error", "message" to (e.message ?: "No decoder for this video"), "fatal" to (aCodec == null)))
             return
         }
         val log = if (decoderLog.isNotEmpty()) "\n" + decoderLog.toString().trim() else ""
-        emit(mapOf("type" to "error", "message" to "No working video decoder: ${describe(e)}$log"))
+        emit(mapOf("type" to "error", "message" to "No working video decoder: ${describe(e)}$log", "fatal" to (aCodec == null)))
     }
 
     private fun onAudioError(e: Exception) {
@@ -903,7 +903,7 @@ class NativePlayer(
     private fun fail(e: Exception) {
         playing = false
         quiet { track?.pause() }
-        emit(mapOf("type" to "error", "message" to describe(e)))
+        emit(mapOf("type" to "error", "message" to describe(e), "fatal" to true))
         emitState()
     }
 
