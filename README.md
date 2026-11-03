@@ -8,7 +8,7 @@ For docs-only changes, put [skip ci] in the commit message.
 
 # Video Player
 
-Local-only Material 3 Android player. Playback uses libmpv. Files stay on the device.
+Local-only Material 3 Android player. Playback uses its own engine (Android MediaCodec, plus a decode-only FFmpeg software decoder for streams the phone cannot decode). Files stay on the device.
 
 [Download APK][download]
 
@@ -42,7 +42,7 @@ Local-only Material 3 Android player. Playback uses libmpv. Files stay on the de
 
 ## Player
 
-- libmpv playback, one video at a time
+- Own playback engine (MediaCodec, FFmpeg software fallback), one video at a time
 - Hardware, software, or auto decoder
 - Player style:
   - Bottom dialog sheet: fullscreen player, playlist as a Material sheet

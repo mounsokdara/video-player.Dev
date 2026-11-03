@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,17 @@ void _rememberWindowBg(int argb) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Our playback engine bundles FFmpeg's decoders (LGPL) for streams the phone cannot decode.
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/licenses/LGPL-2.1.txt');
+    yield LicenseEntryWithLineBreaks(
+      const ['FFmpeg (libavcodec, libavutil)'],
+      'FFmpeg is used only as a decode-only software video decoder (HEVC and H.264), built from '
+      'the unmodified upstream source (tag n7.1, https://github.com/FFmpeg/FFmpeg) with the build '
+      'script scripts/build_ffmpeg.sh in this project. It is licensed under the GNU Lesser General '
+      'Public License, version 2.1 or later, reproduced below. FFmpeg is a trademark of Fabrice Bellard.\n\n$text',
+    );
+  });
   await runZonedGuarded(() async {
     FlutterError.onError = (details) {
       CrashLog.record('FLUTTER', details.exceptionAsString(), details.stack);

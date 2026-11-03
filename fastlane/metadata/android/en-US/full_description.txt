@@ -1,4 +1,4 @@
-Local-only Material 3 Android video player powered by libmpv (media_kit). Your videos stay on your device — no cloud, no tracking, no analytics.
+Local-only Material 3 Android video player with its own playback engine (MediaCodec, FFmpeg software fallback). Your videos stay on your device — no cloud, no tracking, no analytics.
 
 <b>Library</b>
 • Scans internal storage, SD cards and USB/OTG drives

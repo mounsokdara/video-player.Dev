@@ -28,7 +28,7 @@ An video Player Powerd by flutter
 
 ## Player
 
-- libmpv playback, one video at a time
+- Own playback engine (MediaCodec, FFmpeg software fallback), one video at a time
 - Hardware, software, or auto decoder (HW priority optional)
 - Player style:
   - Bottom dialog sheet (default): fullscreen player, playlist as a Material sheet
