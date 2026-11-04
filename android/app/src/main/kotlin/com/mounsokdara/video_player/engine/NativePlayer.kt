@@ -512,10 +512,14 @@ class NativePlayer(
     }
 
     private fun teardown() {
+        val hadHardware = vCodec != null
         opened = false
         playing = false
         atEnd = false
         dropVideoCodec()
+        // MediaTek decoders free their hardware slot asynchronously; opening the next video
+        // right away could crash inside the native decoder. Give it a moment to settle.
+        if (hadHardware) quiet { Thread.sleep(60) }
         aCodec?.let { c ->
             quiet { c.stop() }
             quiet { c.release() }
@@ -1194,7 +1198,12 @@ class NativePlayer(
         if (audioDone && videoDone && pendingA < 0) {
             // let the tail of the audio buffer play out
             if (durationUs <= 0 || clockUs() >= durationUs - 150_000L) finish()
+            return
         }
+        // Watchdog: after scrubbing near the end a decoder may never report EOS (hardware HEVC
+        // on some MediaTek phones), which left the player "playing" at 0:00 left forever and
+        // never advanced to the next video. If the clock ran past the end, call it finished.
+        if (durationUs > 0 && clockUs() >= durationUs + 1_200_000L) finish()
     }
 
     // =====================================================================================
