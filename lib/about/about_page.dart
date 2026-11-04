@@ -99,7 +99,7 @@ class _AboutPageState extends State<AboutPage> {
                     AboutItem(
                       icon: Icons.info_outline,
                       title: 'Version',
-                      subtitle: AboutInfo.displayVersion,
+                      subtitle: 'v${AboutInfo.displayVersion}',
                       onTap: _onVersionTap,
                       chevron: false,
                     ),
@@ -144,10 +144,6 @@ class _Hero extends StatelessWidget {
         Text(AboutInfo.name, style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Text(AboutInfo.tagline, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
-        const SizedBox(height: 14),
-        const Wrap(spacing: 8, runSpacing: 8, children: [
-          AboutChip('v${AboutInfo.displayVersion}', icon: Icons.sell_outlined),
-        ]),
       ]),
     );
   }
