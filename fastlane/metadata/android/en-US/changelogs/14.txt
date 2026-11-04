@@ -1,8 +1,0 @@
-v1.0.5 (2026-11-04)
-• New own playback engine (MediaCodec + FFmpeg), replaces libmpv
-• Fix green strip on the right edge of odd-width videos
-• Previous / Next switch video in one tap; fast taps are queued
-• Fix Zoomed full screen stretching instead of cropping
-• HDR white level now defaults to 203 nits
-• Brightness sliders are smooth and now work for SDR and hardware decode
-• SDR videos keep normal brightness in software decode

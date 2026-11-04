@@ -1,7 +1,10 @@
 v1.0.4 (2026-10-31)
-• Fix screenshot: it now captures the video frame instead of the whole screen
-• Screenshots are much faster (native encoder) and no longer stall playback
-• Search results can be selected (long-press), with select all and actions
-• New setting: screenshot format (PNG, JPG or JPEG)
-• Reproducible F-Droid builds: same paths and JDK as F-Droid
-• Per-ABI APKs with their own version codes for F-Droid
+• New own playback engine (MediaCodec + FFmpeg)
+• Fix green strip on odd-width videos
+• Fix Zoomed full screen stretching
+• Previous / Next switch video in one tap
+• Smooth brightness sliders, now work for SDR and hardware; HDR white level 203 nits
+• Fix screenshot: captures the video frame, faster, no stall
+• Search results: select, select all, actions
+• Screenshot format setting (PNG, JPG, JPEG)
+• Reproducible F-Droid builds, per-ABI APKs
