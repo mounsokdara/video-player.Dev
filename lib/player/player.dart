@@ -73,6 +73,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
   bool mirror = false;
   bool invert = false;
   bool _lastPlaying = false;
+  int _lastDurMs = -1;
   DateTime _lastUi = DateTime.fromMillisecondsSinceEpoch(0);
   StreamSubscription<Map<String, dynamic>>? events;
   double _zoomScale = 1;
@@ -450,7 +451,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       _openedAt = DateTime.now();
       await AndroidBridge.requestAudioFocus();
       await engine.play();
-      _lastPlaying = true;
+      _lastPlaying = engine.value.isPlaying;
+      if (mounted) setState(() {});
       _posTick.value = engine.value.position.inMilliseconds;
       _syncPip();
       unawaited(_applySpeed());
@@ -508,6 +510,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
       }
       final playing = c.value.isPlaying;
       final nowTick = DateTime.now();
+      if (durMs != _lastDurMs) {
+        _lastDurMs = durMs;
+        if (mounted) setState(() {});
+      }
       if (playing != _lastPlaying) {
         _lastPlaying = playing;
         _syncPip();
@@ -527,7 +533,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
         _endedLatch = false; // user seeked back / replayed after the end: arm the end check again
         _completedSince = null;
       }
-      if (!_endedLatch && ready && _endArmed && nowTick.difference(_openedAt) >= const Duration(milliseconds: 1500)) {
+      final hardEnd = c.value.completed && !playing && durMs > 0;
+      final gateOk = _endArmed && nowTick.difference(_openedAt) >= const Duration(milliseconds: 1500);
+      if (!_endedLatch && ready && (gateOk || hardEnd)) {
         final nearEnd = durMs > 0 && posMs >= durMs - 400;
         // A "completed" flag far from the end is only trusted when it stays set (truncated files).
         final completedSane = c.value.completed && (durMs <= 0 || posMs >= durMs - 3000);
@@ -1661,6 +1669,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
             valueListenable: _posTick,
             builder: (_, ms, __) {
               final pos = Duration(milliseconds: ms);
+              final dur = vc?.value.duration ?? Duration.zero; // live, not the value from the last full build
+              final playing = vc?.value.isPlaying ?? false;
               final remain = dur - pos;
               return Container(
           padding: EdgeInsets.fromLTRB(8, 12, 8, 12 + pad.bottom),

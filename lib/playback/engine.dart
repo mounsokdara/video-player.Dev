@@ -122,6 +122,7 @@ class PlaybackEngine extends ChangeNotifier {
   bool get softwareDecode => _software;
 
   int _openSeq = 0;
+  bool _opening = false; // between open() and its reply: events still belong to the previous file
   String? _pendingKey;
   Future<void>? _pendingOpen;
 
@@ -188,12 +189,15 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
 
     Map<dynamic, dynamic>? info;
+    _opening = true;
     try {
       info = await _NativeBus.method.invokeMapMethod<dynamic, dynamic>('open', {
         'path': _source(path),
         'preferSoftware': hwdec == 'no',
       });
+      _opening = false;
     } on PlatformException catch (e) {
+      _opening = false;
       final text = e.message ?? 'Source error';
       value = EngineValue(hasError: true, errorDescription: text);
       notifyListeners();
@@ -376,6 +380,7 @@ class PlaybackEngine extends ChangeNotifier {
     if (e is! Map || _closed) return;
     switch (e['type']) {
       case 'state':
+        if (_opening) break;
         _nativePlaying = (e['playing'] as bool?) ?? _nativePlaying;
         _pos = Duration(milliseconds: (e['positionMs'] as num?)?.toInt() ?? 0);
         final d = (e['durationMs'] as num?)?.toInt() ?? 0;
@@ -388,6 +393,7 @@ class PlaybackEngine extends ChangeNotifier {
         DeveloperLog.append('decoder $_decoder');
         _describe();
       case 'ended':
+        if (_opening) break; // stale end of the previous file, the new one has not started
         if (_looping) {
           unawaited(_NativeBus.call('play'));
         } else {
@@ -458,6 +464,12 @@ class PlaybackEngine extends ChangeNotifier {
   Future<void> play() async {
     DeveloperLog.player('play');
     wantPlay = true;
+    if (_completed) {
+      // Play after the end restarts from 0; do not let the old "completed" flag trigger next.
+      _completed = false;
+      _pos = Duration.zero;
+      _seekTarget = null;
+    }
     _alive.add(this);
     await _pauseOthers();
     if (!_mine) return;
