@@ -51,7 +51,11 @@ class _RenderSheetState extends State<_RenderSheet> {
   Widget build(BuildContext context) {
     final e = _e;
     final active = e != null && e.hasPlayer;
+    // Re-read tune AFTER _sdr is current so sliders always reflect the right profile.
     final tune = _rs.tuning(sdr: _sdr);
+    // Show HDR toggle only when the source actually needs HDR tone-mapping.
+    // For SDR videos _convert is false, so we lock the selector and show SDR tuning.
+    final sourceIsHdr = e?.hdrActive ?? false;
 
     return SafeArea(
       child: Padding(
@@ -71,16 +75,25 @@ class _RenderSheetState extends State<_RenderSheet> {
                   ButtonSegment<bool>(value: true, label: Text('SDR')),
                 ],
                 selected: {_sdr},
-                onSelectionChanged: active
+                // Only allow switching when active AND the source is an HDR video.
+                // SDR videos always use the SDR tuning profile; showing the toggle
+                // for them was what caused HDR settings to overwrite SDR ones.
+                onSelectionChanged: (active && sourceIsHdr)
                     ? (s) {
-                        setState(() => _sdr = s.first);
-                        e?.setSdrMode(_sdr);
+                        final newSdr = s.first;
+                        setState(() => _sdr = newSdr);
+                        e?.setSdrMode(newSdr);
                       }
                     : null,
               ),
               _hint(active
-                  ? 'Switches the active render mode live. For HDR videos this changes HDR/SDR tone mapping; for SDR videos it applies the selected render tuning.'
+                  ? (sourceIsHdr
+                      ? 'Switches HDR↔SDR tone mapping live for this HDR video.'
+                      : 'This video is SDR — brightness controls apply the SDR tuning profile.')
                   : 'Start a video to change the render mode.'),
+              // The title and all sliders below always use the _sdr-keyed profile,
+              // so editing brightness for an SDR source writes to peakSdr/gammaSdr
+              // and editing for an HDR source (HDR mode) writes to peakHdr/gammaHdr.
               _title('${_sdr ? 'SDR' : 'HDR'} brightness'),
               Text('White level: ${tune.peak} nits (higher = brighter)'),
               Slider(
@@ -88,7 +101,9 @@ class _RenderSheetState extends State<_RenderSheet> {
                 min: 100,
                 max: 1000,
                 onChanged: (v) {
-                  setState(() => _rs.setTuning(sdr: _sdr, peak: v.round()));
+                  // Capture current _sdr to avoid a race if the toggle fires mid-drag.
+                  final forSdr = _sdr;
+                  setState(() => _rs.setTuning(sdr: forSdr, peak: v.round()));
                   e?.retune();
                 },
                 onChangeEnd: (_) => _rs.save(),
@@ -99,7 +114,8 @@ class _RenderSheetState extends State<_RenderSheet> {
                 min: -50,
                 max: 50,
                 onChanged: (v) {
-                  setState(() => _rs.setTuning(sdr: _sdr, gamma: v.round()));
+                  final forSdr = _sdr;
+                  setState(() => _rs.setTuning(sdr: forSdr, gamma: v.round()));
                   e?.retune();
                 },
                 onChangeEnd: (_) => _rs.save(),
@@ -108,7 +124,8 @@ class _RenderSheetState extends State<_RenderSheet> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    setState(() => _rs.resetTuning(sdr: _sdr));
+                    final forSdr = _sdr;
+                    setState(() => _rs.resetTuning(sdr: forSdr));
                     _rs.save();
                     e?.retune();
                   },

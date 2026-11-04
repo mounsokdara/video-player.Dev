@@ -132,7 +132,15 @@ class PlaybackSession {
       }
       if (!c.value.isInitialized) return;
       final dur = c.value.duration;
-      if (dur > Duration.zero && c.value.position >= dur - _endSlop && !c.value.isPlaying) {
+      // Guard: only treat "position near end while paused" as ended when we have
+      // a real duration AND the video has actually started playing at least once
+      // (wantPlay was set). This prevents a false-ended trigger during the brief
+      // window after open() returns but before the native 'state' event sets
+      // isPlaying=true, where position=0 and duration=0 → 0 >= 0-slop is true.
+      if (dur > Duration.zero &&
+          c.value.position >= dur - _endSlop &&
+          !c.value.isPlaying &&
+          c.wantPlay) {
         unawaited(onEnded());
       }
       if (_away) notePlayback(c);
@@ -369,19 +377,29 @@ class PlaybackSession {
     _endedLatch = true;
     switch (appSettings.playMode) {
       case PlayMode.repeatOne:
+        // Always loop the current video.
         try {
           await controller?.seekTo(Duration.zero);
           await controller?.play();
         } catch (_) {}
         _endedLatch = false;
+
       case PlayMode.noAutoplay:
+        // Stay stopped after the video ends — do nothing.
         return;
+
       case PlayMode.loopAll:
-      case PlayMode.order:
+        // Always advance (wraps around via nextIndex which uses loopAll modulo).
+        await skip(1, fromEnd: true);
+
       case PlayMode.shuffle:
-        if (appSettings.autoPlayNext ||
-            appSettings.playMode == PlayMode.loopAll ||
-            appSettings.playMode == PlayMode.shuffle) {
+        // Always pick a random next video.
+        await skip(1, fromEnd: true);
+
+      case PlayMode.order:
+        // Only advance when the user has enabled auto-play next.
+        // If autoPlayNext is off and we're in Order mode, stop at the end.
+        if (appSettings.autoPlayNext) {
           await skip(1, fromEnd: true);
         }
     }
@@ -463,15 +481,20 @@ class PlaybackSession {
         created = engine;
       }
       await AndroidBridge.requestAudioFocus();
-      await engine.play();
       controller = engine;
       item = next;
       playlist = List<VideoItem>.from(list);
       index = at;
       keepAlive = true;
-      _endedLatch = false;
       _failStreak = 0;
       _listen();
+      // Start playback AFTER _listen() is re-attached but BEFORE clearing the
+      // latch, so any stray completed/ended events that fire during open() are
+      // ignored until we know the new video is actually playing.
+      await engine.play();
+      // Only clear the latch once play() has been issued; native 'state' events
+      // that arrive from here on reflect the new video.
+      _endedLatch = false;
       onMutated?.call();
       await AndroidBridge.preparePreview(next.path);
       await applyOutput(engine, next);
