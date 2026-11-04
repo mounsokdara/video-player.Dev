@@ -97,7 +97,7 @@ class _AboutPageState extends State<AboutPage> {
                     AboutItem(
                       icon: Icons.info_outline,
                       title: 'Version',
-                      subtitle: 'v${AboutInfo.displayVersion}',
+                      subtitle: 'v${AboutInfo.displayVersionWithCode}',
                       onTap: _onVersionTap,
                       chevron: false,
                     ),

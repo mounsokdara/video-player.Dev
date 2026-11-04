@@ -80,7 +80,7 @@ jobs:
         run: |
           set +e
           VER=$(cut -d+ -f1 version.txt | tr -d '[:space:]')
-          flutter build apk --release --target-platform "${{ matrix.platforms }}" --dart-define=APP_VERSION="$VER" 2>&1 | tee /tmp/build.log
+          flutter build apk --release --target-platform "${{ matrix.platforms }}" --dart-define=APP_VERSION="$VER" --dart-define=APP_BUILD="$(cut -d+ -f2 version.txt | tr -d '[:space:]')" 2>&1 | tee /tmp/build.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
             grep -n -E "^e: |error:|FAILURE|What went wrong|Execution failed|AAPT|not found|Unresolved|Could not|not supported" /tmp/build.log | head -15 | while IFS= read -r l; do echo "::error::${l:0:480}"; done
@@ -183,7 +183,7 @@ jobs:
           export PUB_CACHE="$FD_APP/.pub-cache"
           bash scripts/patch-jni-build-id.sh
           "$FD_FLUTTER/bin/flutter" build apk --release --split-per-abi --target-platform ${{ matrix.platform }} \
-            --dart-define=FDROID=true --dart-define=APP_VERSION=$(cut -d+ -f1 version.txt)
+            --dart-define=FDROID=true --dart-define=APP_VERSION=$(cut -d+ -f1 version.txt) --dart-define=APP_BUILD=$(cut -d+ -f2 version.txt | tr -d '[:space:]')
       - name: Check versionCode and that no runner path leaked into the app
         working-directory: /home/vagrant/build/com.mounsokdara.video_player
         run: |
