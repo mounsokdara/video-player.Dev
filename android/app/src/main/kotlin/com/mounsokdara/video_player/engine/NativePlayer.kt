@@ -24,7 +24,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
-/** No decoder on this device can handle the stream at all (not a transient failure). */
 class UnsupportedStreamException(message: String) : Exception(message)
 
 object PlayerHolder {
@@ -32,14 +31,6 @@ object PlayerHolder {
     var player: NativePlayer? = null
 }
 
-/**
- * Our own playback engine. No third-party player code:
- *   MediaExtractor (demux)  ->  MediaCodec (decode)  ->  Surface / AudioTrack (output)
- *
- * Everything runs on one player thread, so there is no locking. Video renders straight to a
- * SurfaceView (the system compositor does HDR / tone mapping). Audio goes to an AudioTrack, which
- * is also the master clock; AudioTrack.PlaybackParams gives independent speed and pitch.
- */
 class NativePlayer(
     ctx: Context,
     private val textures: TextureRegistry,
@@ -54,7 +45,6 @@ class NativePlayer(
     private var released = false
     private var opened = false
 
-    // ---- media ----
     private var vEx: MediaExtractor? = null
     private var aEx: MediaExtractor? = null
     private var vFormat: MediaFormat? = null
@@ -63,11 +53,9 @@ class NativePlayer(
     private var aCodec: MediaCodec? = null
     private var durationUs = 0L
 
-    // The decoder renders into a Flutter texture we own (valid for the whole file), not a view's surface.
     private var producer: TextureRegistry.SurfaceProducer? = null
     private var codecSurface: Surface? = null
 
-    // Software path (FFmpeg decode) for streams no phone decoder supports, e.g. HEVC Main 10.
     private var softwareMode = false
     private var stEntry: TextureRegistry.SurfaceTextureEntry? = null
     private var stSurface: Surface? = null
@@ -78,7 +66,6 @@ class NativePlayer(
     private var swEos = false
     private var swSkip = 0
 
-    // ---- transport ----
     private var playing = false
     private var atEnd = false
     private var speed = 1f
@@ -87,13 +74,11 @@ class NativePlayer(
     private var anchorUs = 0L
     private var anchorNs = 0L
 
-    // ---- seek ----
     private var skipBeforeUs = Long.MIN_VALUE
     private var needFirstFrame = true
     private var seekDone: (() -> Unit)? = null
     private var seekStartNs = 0L
 
-    // ---- video pipeline ----
     private val vInfo = MediaCodec.BufferInfo()
     private var vInEos = false
     private var vOutDone = false
@@ -102,7 +87,6 @@ class NativePlayer(
     private var pendingVFlags = 0
     private var lastRenderNs = 0L
 
-    // ---- audio pipeline ----
     private val aInfo = MediaCodec.BufferInfo()
     private var aInEos = false
     private var aOutDone = false
@@ -123,12 +107,10 @@ class NativePlayer(
 
     private var lastEmitNs = 0L
     private var lastVOutNs = 0L
-    // Wall-clock deadline guard: where we were (media time) at which wall time, since the last seek/play/speed change.
     private var wdUs = 0L
     private var wdNs = 0L
     private var lastAOutNs = 0L
 
-    // Volume / balance / effects session (the app's equalizer attaches to this session id).
     @Volatile private var audioSession = 0
     private var volume = 1f
     private var balL = 1f
@@ -155,10 +137,6 @@ class NativePlayer(
             }
         })
     }
-
-    // =====================================================================================
-    // Public API (any thread)
-    // =====================================================================================
 
     fun open(source: String, preferSoftware: Boolean, done: (Map<String, Any?>?, String?) -> Unit) {
         h.post {
@@ -196,7 +174,6 @@ class NativePlayer(
         quiet { track?.setStereoVolume(volume * balL, volume * balR) }
     }
 
-    /** HDR -> SDR tuning for the software path: peak in nits (203 = SDR white), gamma -100..100. */
     fun setTuning(peakNits: Int, gammaPct: Int) {
         h.post {
             tunePeak = peakNits
@@ -205,17 +182,15 @@ class NativePlayer(
         }
     }
 
-    /** Stops and frees the current file but keeps the player usable for the next open(). */
     fun stop() { h.post { teardown() } }
 
     fun play() { h.post { doPlay() } }
 
     fun pause() { h.post { doPause() } }
 
-    /** done() is called after the first frame following the seek is on screen (or on timeout). */
     fun seek(positionUs: Long, accurate: Boolean, done: () -> Unit) {
         h.post {
-            finishSeek() // a newer seek supersedes the older one
+            finishSeek()
             seekDone = { main.post { done() } }
             if (!opened) {
                 finishSeek()
@@ -244,7 +219,6 @@ class NativePlayer(
         }
     }
 
-    /** Frees the video decoder (and keeps it free) so the decoder test can use it. Blocks briefly. */
     fun setDiagnosing(on: Boolean) {
         val latch = CountDownLatch(1)
         h.post {
@@ -273,11 +247,6 @@ class NativePlayer(
         }
     }
 
-    // =====================================================================================
-    // Open / teardown
-    // =====================================================================================
-
-    /** Class, message, codec error details and the first frame in our own code. */
     private fun describe(e: Throwable): String {
         val sb = StringBuilder(e.javaClass.simpleName)
         e.message?.let { sb.append(": ").append(it) }
@@ -293,7 +262,6 @@ class NativePlayer(
         return sb.toString()
     }
 
-    /** Flutter texture calls belong on the platform thread; block briefly until they ran. */
     private fun <T> onMain(block: () -> T): T {
         if (Looper.myLooper() == Looper.getMainLooper()) return block()
         val latch = CountDownLatch(1)
@@ -306,7 +274,6 @@ class NativePlayer(
         return out!!.getOrThrow()
     }
 
-    /** True when the stream is 10-bit HEVC and no decoder on this phone lists a 10-bit profile. */
     private fun noHardwareFor(f: MediaFormat): Boolean {
         val mime = f.getString(MediaFormat.KEY_MIME) ?: return false
         if (!mime.equals("video/hevc", true) || !f.containsKey(MediaFormat.KEY_PROFILE)) return false
@@ -355,7 +322,6 @@ class NativePlayer(
         return if (frames > 0 && dur > 0) frames * 1_000_000.0 / dur else 0.0
     }
 
-    /** Bit depth from the codec profile (MediaExtractor does not expose it directly). */
     private fun bitDepthOf(mime: String, p: Int?): Int {
         if (mime.contains("dolby-vision")) return 10
         if (p == null) return 8
@@ -388,7 +354,6 @@ class NativePlayer(
         producer = null
     }
 
-    /** CPU-written frames: a SurfaceTexture entry accepts ANativeWindow_lock writes. */
     private fun createSoftwareOutput(w: Int, hgt: Int) {
         val pair = onMain {
             val e = textures.createSurfaceTexture()
@@ -463,7 +428,6 @@ class NativePlayer(
             hgt = intOrNull(vf, MediaFormat.KEY_HEIGHT) ?: 0
             rot = intOrNull(vf, MediaFormat.KEY_ROTATION) ?: 0
             profile = intOrNull(vf, MediaFormat.KEY_PROFILE)
-            // Texture consumers ignore the codec's rotation hint, so Flutter rotates instead.
             if (vf.containsKey(MediaFormat.KEY_ROTATION)) vf.setInteger(MediaFormat.KEY_ROTATION, 0)
             if (vf.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
                 val b = vf.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO)!!.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN)
@@ -473,11 +437,7 @@ class NativePlayer(
                 }
             }
 
-            // Pick the decoder now so a failure is reported by open() and the app can retry.
             val canSoft = SwNative.available && softwareCodecId(mime) >= 0
-            // Streams whose width is not a multiple of 16 (e.g. 886x1920 screen recordings) get a
-            // padded decoder buffer. The hardware surface path can show that padding as a green
-            // strip on the right edge, so decode those in software, which writes exact-size frames.
             val unalignedWidth = w > 0 && w % 16 != 0
             var wantSw = canSoft && (preferSoftware || noHardwareFor(vf) || unalignedWidth)
             if (!wantSw) {
@@ -524,8 +484,6 @@ class NativePlayer(
         playing = false
         atEnd = false
         dropVideoCodec()
-        // MediaTek decoders free their hardware slot asynchronously; opening the next video
-        // right away could crash inside the native decoder. Give it a moment to settle.
         if (hadHardware) quiet { Thread.sleep(60) }
         aCodec?.let { c ->
             quiet { c.stop() }
@@ -566,10 +524,6 @@ class NativePlayer(
         swHave = false
     }
 
-    // =====================================================================================
-    // Decoder selection: hardware first, then software, no third-party fallback needed
-    // =====================================================================================
-
     private fun isSoftware(i: MediaCodecInfo): Boolean =
         if (Build.VERSION.SDK_INT >= 29) i.isSoftwareOnly
         else i.name.startsWith("OMX.google.") || i.name.startsWith("c2.android.")
@@ -591,7 +545,6 @@ class NativePlayer(
                 }
                 (if (isSoftware(info)) 2 else 0) + (if (claims) 0 else 1)
             }
-        // 10-bit HEVC (Main 10 / HDR10 / HDR10+): if no decoder lists such a profile, nothing below can work.
         val candidatesToTry = if (mime.equals("video/hevc", true) && f.containsKey(MediaFormat.KEY_PROFILE) &&
             f.getInteger(MediaFormat.KEY_PROFILE).let { it == 2 || it == 4096 || it == 8192 }
         ) {
@@ -661,7 +614,6 @@ class NativePlayer(
         }
     }
 
-    /** Creates the decoder on the engine-owned texture. Throws if no decoder can take the stream. */
     private fun startHardwareVideo(f: MediaFormat) {
         val s = producer?.surface ?: throw IllegalStateException("No output surface")
         val at = if (playing) clockUs() else pausedUs
@@ -685,7 +637,6 @@ class NativePlayer(
         }
     }
 
-    /** Starts the FFmpeg decoder writing into the SurfaceTexture. Throws on failure. */
     private fun startSoftwareVideo(f: MediaFormat) {
         val surf = stSurface ?: throw IllegalStateException("No output surface")
         val mime = f.getString(MediaFormat.KEY_MIME) ?: ""
@@ -720,7 +671,6 @@ class NativePlayer(
         seekStartNs = System.nanoTime()
     }
 
-    /** Decode a few frames per tick, present the ones that are due, drop the late ones. */
     private fun swStep() {
         val h = sw
         val ex = vEx ?: return
@@ -783,7 +733,6 @@ class NativePlayer(
             if (!playing) return
             val delayUs = ((swPts - clockUs()).toDouble() / speed).toLong()
             if (delayUs > 15_000L) return
-            // Falling behind: stop decoding non-reference frames until we catch up.
             if (delayUs < -250_000L && swSkip != 1) { SwNative.nSetSkip(h, 1); swSkip = 1 }
             else if (delayUs > -60_000L && swSkip != 0) { SwNative.nSetSkip(h, 0); swSkip = 0 }
             if (delayUs < -40_000L && now - lastRenderNs < 250_000_000L) {
@@ -807,7 +756,6 @@ class NativePlayer(
         emit(mapOf("type" to "error", "message" to "Software decoder failed at [$stage]: ${describe(e)}", "fatal" to (aCodec == null)))
     }
 
-    /** A decoder died mid-stream: remember it and let ensureVideoCodec() pick the next candidate. */
     private fun onVideoError(e: Exception) {
         val name = decoderKey
         decoderLog.append(name).append(" (runtime @").append(stage).append("): ").append(describe(e)).append('\n')
@@ -816,7 +764,6 @@ class NativePlayer(
         emit(mapOf("type" to "error", "message" to "Decoder $name failed while decoding at [$stage] (${describe(e)}), trying the next one"))
     }
 
-    /** No decoder works: keep going audio-only instead of dying. */
     private fun disableVideo(e: Exception) {
         videoDisabled = true
         needFirstFrame = false
@@ -848,10 +795,6 @@ class NativePlayer(
         emit(mapOf("type" to "error", "message" to "Audio disabled at [$stage]: ${describe(e)}"))
     }
 
-    // =====================================================================================
-    // Transport
-    // =====================================================================================
-
     private fun markWatchdog(us: Long) {
         wdUs = us
         wdNs = System.nanoTime()
@@ -876,7 +819,6 @@ class NativePlayer(
         emitState()
     }
 
-    /** A seek onto the very end is simply "the video ended": no decoding, same result as playing out. */
     private fun seekToEnd() {
         quiet { if (pendingV >= 0) vCodec?.releaseOutputBuffer(pendingV, false) }
         quiet { if (pendingA >= 0) aCodec?.releaseOutputBuffer(pendingA, false) }
@@ -893,8 +835,6 @@ class NativePlayer(
             seekToEnd()
             return
         }
-        // A keyframe-only seek in the last seconds lands on an earlier keyframe, so playback
-        // jumped back "a few seconds". Near the end always seek to the exact spot instead.
         val accurate = wantAccurate || (durationUs > 0 && target >= durationUs - 4_000_000L)
         val t = target
         atEnd = false
@@ -951,11 +891,6 @@ class NativePlayer(
         emitState()
     }
 
-    // =====================================================================================
-    // Clock
-    // =====================================================================================
-
-    /** Media time "now". Audio-master when the AudioTrack reports timestamps, wall clock otherwise. */
     private fun clockUs(): Long {
         if (!opened) return 0L
         if (!playing) return pausedUs
@@ -984,17 +919,12 @@ class NativePlayer(
         return if (durationUs > 0) p.coerceIn(0L, durationUs) else max(p, 0L)
     }
 
-    // =====================================================================================
-    // Main loop
-    // =====================================================================================
-
     private fun tick(): Boolean {
         if (!opened) return false
         val cur = producer?.surface
         if (!softwareMode && vCodec != null && cur !== codecSurface) dropVideoCodec()
         ensureVideoCodec()
 
-        // A seek whose frame never shows (no surface, slow software decode) must still complete.
         if (seekDone != null && System.nanoTime() - seekStartNs > 1_500_000_000L) finishSeek()
 
         if (playing || needFirstFrame) {
@@ -1047,8 +977,6 @@ class NativePlayer(
         return false
     }
 
-    // ---- video ----
-
     private fun drainVideo() {
         val c = vCodec ?: return
         if (vOutDone) return
@@ -1059,7 +987,7 @@ class NativePlayer(
                 stage = "video.dequeueOutput"
                 val i = c.dequeueOutputBuffer(vInfo, 0)
                 if (i == MediaCodec.INFO_TRY_AGAIN_LATER) return
-                if (i < 0) continue // format / buffers changed
+                if (i < 0) continue
                 pendingV = i
                 lastVOutNs = System.nanoTime()
                 pendingVPts = vInfo.presentationTimeUs
@@ -1076,7 +1004,6 @@ class NativePlayer(
                 }
                 return
             }
-            // accurate seek: decode from the keyframe but never show frames before the target
             if (pendingVPts < skipBeforeUs) {
                 c.releaseOutputBuffer(pendingV, false)
                 pendingV = -1
@@ -1096,7 +1023,7 @@ class NativePlayer(
                 continue
             }
             val delayUs = ((pendingVPts - clockUs()).toDouble() / speed).toLong()
-            if (delayUs > 20_000L) return // not time yet, keep the frame for the next tick
+            if (delayUs > 20_000L) return
             val dropIt = delayUs < -40_000L && nowNs - lastRenderNs < 250_000_000L
             if (dropIt) {
                 c.releaseOutputBuffer(pendingV, false)
@@ -1107,8 +1034,6 @@ class NativePlayer(
             pendingV = -1
         }
     }
-
-    // ---- audio ----
 
     private fun setupTrack(fmt: MediaFormat) {
         val sr = fmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -1129,7 +1054,7 @@ class NativePlayer(
             else -> 2
         }
         val minBuf = AudioTrack.getMinBufferSize(sr, mask, enc)
-        val size = max(minBuf * 4, sr * ch * bps / 2) // at least half a second
+        val size = max(minBuf * 4, sr * ch * bps / 2)
         track?.let { t -> quiet { t.release() } }
         track = AudioTrack.Builder()
             .setAudioAttributes(
@@ -1162,7 +1087,7 @@ class NativePlayer(
 
     private fun applyParams() {
         val t = track ?: return
-        if (!audioStarted) return // applied in startTrack(); setting params on a stopped track can restart it
+        if (!audioStarted) return
         try {
             t.setPlaybackParams(
                 PlaybackParams()
@@ -1177,7 +1102,6 @@ class NativePlayer(
 
     private fun drainAudio() {
         val c = aCodec ?: return
-        // (re)start the track once enough PCM is queued, also after pause/resume
         if (!audioStarted && track != null && playing &&
             (writtenSinceFlush >= sampleRate.toLong() * bytesPerFrame / 5 || aOutDone)
         ) startTrack()
@@ -1214,7 +1138,7 @@ class NativePlayer(
                 pendingAOff += w
                 pendingARemain -= w
                 writtenSinceFlush += w
-                if (pendingARemain > 0) return // track buffer full, retry next tick
+                if (pendingARemain > 0) return
             }
             c.releaseOutputBuffer(pendingA, false)
             pendingA = -1
@@ -1226,9 +1150,6 @@ class NativePlayer(
     }
 
     private fun checkEnded() {
-        // Seeking into the last second right after a flush can make a hardware decoder swallow
-        // its end-of-stream marker (seen on MediaTek). The stream is over when every sample was
-        // fed, nothing is waiting to be shown/written and the decoder stayed silent for a while.
         val nowNs = System.nanoTime()
         val audioDrained = aInEos && pendingA < 0 && nowNs - lastAOutNs > 600_000_000L
         val videoDrained = vInEos && pendingV < 0 && nowNs - lastVOutNs > 600_000_000L
@@ -1240,22 +1161,14 @@ class NativePlayer(
             else -> durationUs > 0 && clockUs() >= durationUs
         }
         if (audioDone && videoDone && pendingA < 0) {
-            // let the tail of the audio buffer play out
             if (durationUs <= 0 || clockUs() >= durationUs - 150_000L) finish()
             return
         }
-        // Safety net, never early: playing from a known spot at a known speed must reach the end
-        // by wall time. If a decoder still did not report it 1s after that moment (seen after
-        // seeking into the last second), the video is over.
         if (durationUs > 0 && speed > 0f) {
             val playedUs = ((nowNs - wdNs) / 1000.0 * speed).toLong()
             if (wdUs + playedUs >= durationUs + 1_000_000L) finish()
         }
     }
-
-    // =====================================================================================
-    // Events (audio focus is handled by the app's AudioFocusController)
-    // =====================================================================================
 
     private fun emit(m: Map<String, Any?>) {
         main.post { sink(m) }

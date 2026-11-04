@@ -1,4 +1,3 @@
-// Copyright (c)  2023  Xiaomi Corporation
 package com.k2fsa.sherpa.onnx
 
 import android.content.res.AssetManager
@@ -60,7 +59,6 @@ class Vad(
 
     fun compute(samples: FloatArray): Float = compute(ptr, samples)
 
-
     fun acceptWaveform(samples: FloatArray) = acceptWaveform(ptr, samples)
 
     fun empty(): Boolean = empty(ptr)
@@ -102,51 +100,6 @@ class Vad(
 
     companion object {
         init {
-            // native library is downloaded and loaded by MainActivity
         }
     }
-}
-
-// Please visit
-// https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
-// to download silero_vad.onnx
-// and put it inside the assets/
-// directory
-//
-// For ten-vad, please use
-// https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/ten-vad.onnx
-//
-fun getVadModelConfig(type: Int): VadModelConfig? {
-    when (type) {
-        0 -> {
-            return VadModelConfig(
-                sileroVadModelConfig = SileroVadModelConfig(
-                    model = "silero_vad.onnx",
-                    threshold = 0.5F,
-                    minSilenceDuration = 0.25F,
-                    minSpeechDuration = 0.25F,
-                    windowSize = 512,
-                ),
-                sampleRate = 16000,
-                numThreads = 1,
-                provider = "cpu",
-            )
-        }
-
-        1 -> {
-            return VadModelConfig(
-                tenVadModelConfig = TenVadModelConfig(
-                    model = "ten-vad.onnx",
-                    threshold = 0.5F,
-                    minSilenceDuration = 0.25F,
-                    minSpeechDuration = 0.25F,
-                    windowSize = 256,
-                ),
-                sampleRate = 16000,
-                numThreads = 1,
-                provider = "cpu",
-            )
-        }
-    }
-    return null
 }

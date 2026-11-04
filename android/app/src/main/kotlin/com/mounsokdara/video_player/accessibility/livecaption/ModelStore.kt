@@ -13,10 +13,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Downloadable pieces of Live Caption: the speech engine (native libraries + voice detector) and
- * the Whisper models. Nothing is bundled in the APK; files live in `filesDir/livecaption`.
- */
 object ModelStore {
     private const val REL = "https://github.com/mounsokdara/offline-video-captions/releases/download/"
     const val RUNTIME = "runtime"

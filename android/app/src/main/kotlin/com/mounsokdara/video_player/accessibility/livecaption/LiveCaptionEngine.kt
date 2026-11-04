@@ -21,18 +21,11 @@ import java.io.FileInputStream
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Live captions for the video being played. Works through the audio phrase by phrase, starting at
- * the playhead: each phrase is transcribed with Whisper as soon as the voice detector closes it,
- * saved to the cache file and pushed to Dart right away (no waiting for the whole audio). Parts
- * already in the cache are skipped. It stays at most [AHEAD_MS] ahead of what is being watched.
- */
 object LiveCaptionEngine {
     private const val AHEAD_MS = 120_000L
     private val gen = AtomicInteger()
     @Volatile private var playheadMs = 0L
 
-    // createLock guards building/replacing the recognizer; decodeLock guards using/releasing it.
     private val createLock = Any()
     private val decodeLock = Any()
     private val main = Handler(Looper.getMainLooper())
@@ -53,7 +46,6 @@ object LiveCaptionEngine {
     fun stop(release: Boolean) {
         val g = gen.incrementAndGet()
         if (release) {
-            // Keep the model for a while: re-entering the player or seeking must not reload it.
             main.postDelayed({
                 if (gen.get() == g) {
                     Thread {
@@ -165,7 +157,6 @@ object LiveCaptionEngine {
             }
             val lang = LiveCaptionPrefs.lang(ctx)
 
-            // The cache is read first: cached captions show at once, before any model is loaded.
             val ex = MediaExtractor()
             extractor = ex
             if (path.startsWith("content:")) {
@@ -228,10 +219,6 @@ object LiveCaptionEngine {
         }
     }
 
-    /**
-     * Transcribes the audio between [from] and [until] (ms), phrase by phrase. Every finished phrase
-     * is cached and sent immediately; the processed time range is saved as the pass moves on.
-     */
     private fun decodePass(
         ctx: Context, path: String, ex: MediaExtractor, fmt: MediaFormat,
         from: Long, until: Long, durationMs: Long, cache: CaptionCache, g: Int,
@@ -281,7 +268,6 @@ object LiveCaptionEngine {
                         publish(path, cache, from, t0, seg.samples.size / 16000.0, text)
                     }
                 }
-                // All audio fed so far is final once no speech is in progress.
                 if (alive() && !v.isSpeechDetected()) {
                     frontier = maxOf(frontier, minOf(fedMs(), until))
                     saveFrontier(false)
@@ -345,7 +331,6 @@ object LiveCaptionEngine {
                         if (pos < 0) pos = 0.0
 
                         val decodedMs = info.presentationTimeUs / 1000L
-                        // Stay near the playhead instead of racing through the whole file.
                         while (alive() && decodedMs > playheadMs + AHEAD_MS) {
                             if (!waiting) {
                                 waiting = true
@@ -384,7 +369,6 @@ object LiveCaptionEngine {
         }
     }
 
-    /** Splits a phrase into short, readable caption lines spread over its time span, then caches and sends them. */
     private fun publish(path: String, cache: CaptionCache, from: Long, t0: Double, dur: Double, text: String) {
         val parts = ArrayList<String>()
         if (text.contains(' ')) {
@@ -408,7 +392,7 @@ object LiveCaptionEngine {
             val s = (t * 1000).toLong()
             val e = ((t + d) * 1000).toLong()
             t += d
-            if (e < from) continue // belongs to a part that is already cached
+            if (e < from) continue
             cache.addCue(s, e, p)
             send(path, mapOf("type" to "cue", "startMs" to s, "endMs" to e, "text" to p))
         }

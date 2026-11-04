@@ -8,11 +8,6 @@ import android.widget.TextView
 import com.mounsokdara.video_player.accessibility.livecaption.ModelStore
 import com.mounsokdara.video_player.accessibility.livecaption.aimodeltranscribe.ClassicActivity
 
-/**
- * Accessibility > Live Caption > Manage AI model > Download.
- * One clickable row per download: arrow icon to download, progress bar while downloading
- * (tap to pause), trash can once downloaded (tap to delete).
- */
 class DownloadActivity : ClassicActivity() {
     override val screenTitle: String get() = "Download"
 

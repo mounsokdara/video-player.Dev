@@ -375,7 +375,6 @@ extension PlayerGestures on _PlayerPageState {
         positionMs: (frac.clamp(0.0, 1.0) * dur).round(),
         longEdge: (168 * dpr).round(),
       );
-      // Keep the last frame if one fails, so the preview never blinks off mid-scrub.
       if (bytes != null && mounted && _scrub != null) {
         final sz = _jpegSize(bytes);
         setState(() {
@@ -388,7 +387,6 @@ extension PlayerGestures on _PlayerPageState {
   }
 }
 
-/// Reads width/height from a JPEG header without decoding it.
 Size? _jpegSize(Uint8List b) {
   if (b.length < 4 || b[0] != 0xFF || b[1] != 0xD8) return null;
   var i = 2;

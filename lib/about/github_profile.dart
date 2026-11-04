@@ -1,9 +1,6 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-/// Public GitHub profile of the app author, fetched live (one request,
-/// cached for the rest of the session).
 class GithubProfile {
   const GithubProfile({required this.login, this.name, this.bio, this.avatarUrl});
   final String login;
@@ -15,7 +12,7 @@ class GithubProfile {
 
   static Future<GithubProfile?> load(String login) {
     return _cached ??= _fetch(login).then((p) {
-      if (p == null) _cached = null; // retry next time after a failure
+      if (p == null) _cached = null;
       return p;
     });
   }

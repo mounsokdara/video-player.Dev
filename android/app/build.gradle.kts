@@ -8,8 +8,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Single source of truth for the app version: <repo root>/version.txt, format "versionName+versionCode"
-// (example: 1.0.2.1+5). Edit that one file to release a new version.
 val versionParts = rootProject.projectDir.parentFile.resolve("version.txt").readText().trim().split("+")
 require(versionParts.size == 2) { "version.txt must look like 1.0.2.1+5" }
 val appVersionName = versionParts[0].trim()
@@ -27,8 +25,6 @@ val abiByPlatform = mapOf(
     "android-arm64" to "arm64-v8a",
     "android-x64" to "x86_64",
 )
-// `flutter build apk --split-per-abi` (F-Droid) turns on Android's ABI splits itself. Setting ndk.abiFilters
-// on top of that makes Gradle fail with "Conflicting configuration", so the filter below is skipped then.
 val splitPerAbi: Boolean = project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
 val selectedAbis: List<String> = run {
     val fromEnv = (System.getenv("ABI_FILTER") ?: "").split(" ", ",").filter { it.isNotBlank() }
@@ -47,8 +43,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Our own engine's software decoder (FFmpeg decode-only static libs + JNI). The libs come from
-    // scripts/build_ffmpeg.sh; without them the module builds as a stub.
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -62,17 +56,12 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
 
-        // Plugin libraries are packed for every CPU unless filtered here, so each
-        // split APK would be as big as the universal one. The list comes from ABI_FILTER (set by the
-        // CI workflow) or, as a fallback, from the -Ptarget-platform property Flutter passes.
-        // With --split-per-abi the splits do this job (one APK per CPU).
         if (selectedAbis.isNotEmpty() && !splitPerAbi) {
             ndk {
                 abiFilters.clear()
                 abiFilters.addAll(selectedAbis)
             }
         }
-        // Build the JNI module only for the CPUs being packaged (flutter's --target-platform / split builds).
         externalNativeBuild {
             cmake {
                 val cmakeAbis = if (selectedAbis.isNotEmpty()) selectedAbis else listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -96,14 +85,12 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            // Belt and braces: drop every CPU that was not asked for, whatever the plugins bundle.
             if (selectedAbis.isNotEmpty()) {
                 allAbis.filter { it !in selectedAbis }.forEach { excludes += "**/lib/$it/**" }
             }
         }
     }
 
-    // F-Droid: do not embed the Google "Dependency metadata" signing block in the APK
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -116,15 +103,12 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            // R8 on, with proguard-rules.pro keeping everything except the unused Google Play wrappers (F-Droid).
             isMinifyEnabled = true
             isShrinkResources = false
         }
     }
 }
 
-// F-Droid ABI split: unique versionCode per ABI so clients always pick the highest installable one.
-// Order: armeabi-v7a < arm64-v8a < x86_64 (digits in the lowest place of versionCode).
 val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
 android.applicationVariants.configureEach {
     val variant = this
@@ -146,8 +130,6 @@ flutter {
     source = "../.."
 }
 
-// F-Droid: Flutter's embedding pulls in Google Play Core (only used for Play Store
-// deferred components, which this app does not use). Exclude it so no proprietary classes ship.
 configurations.configureEach {
     exclude(group = "com.google.android.play")
 }

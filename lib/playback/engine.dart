@@ -47,9 +47,6 @@ class EngineValue {
       );
 }
 
-/// Channel to our own playback engine (android/.../engine/NativePlayer.kt):
-/// MediaExtractor -> MediaCodec (or FFmpeg software decode) -> Flutter texture, AudioTrack for sound.
-/// There is one native player per Flutter engine, so the instance that opened last owns it.
 class _NativeBus {
   static const method = MethodChannel('app.videoplayer/engine');
   static const events = EventChannel('app.videoplayer/engine_events');
@@ -89,14 +86,12 @@ class PlaybackEngine extends ChangeNotifier {
   bool wantPlay = false;
   String debugInfo = '';
 
-  // texture + decoder info (from the native open())
   int? textureId;
   int quarterTurns = 0;
   Size displaySize = Size.zero;
   String _decoder = '';
   bool _software = false;
 
-  // live state (from native 'state' events)
   bool _nativePlaying = false;
   Duration _pos = Duration.zero;
   Duration _dur = Duration.zero;
@@ -106,23 +101,18 @@ class PlaybackEngine extends ChangeNotifier {
 
   bool get hasPlayer => _opened && !_closed;
 
-  /// Non-null once the engine has a picture surface (callers test `video != null` for "is there
-  /// video yet"). It is the id of the Flutter texture the decoder draws into.
   int? get video => textureId;
 
   bool get _mine => identical(_NativeBus.owner, this) && !_closed;
 
-  /// The frame is not available to Dart (it lives in a GPU texture), so there is nothing to save
-  /// here. The caller falls back to the native frame extractor (AndroidBridge.extractFrame).
   Future<String?> screenshotToFile(ScreenshotFormat format) async => null;
 
   String get hwdecName => _decoder.isEmpty ? 'unknown' : _decoder;
 
-  /// True while the FFmpeg software decoder is producing the picture.
   bool get softwareDecode => _software;
 
   int _openSeq = 0;
-  bool _opening = false; // between open() and its reply: events still belong to the previous file
+  bool _opening = false;
   String? _pendingKey;
   Future<void>? _pendingOpen;
 
@@ -175,7 +165,7 @@ class PlaybackEngine extends ChangeNotifier {
         path.startsWith('file:')) {
       return path;
     }
-    return path; // plain file path: the native side opens it directly
+    return path;
   }
 
   Future<void> _openBody(String path, {required String hwdec}) async {
@@ -227,8 +217,6 @@ class PlaybackEngine extends ChangeNotifier {
     DeveloperLog.append('engine ready decoder=$_decoder software=$_software ${_src?.describe() ?? ''}');
   }
 
-  // ---------- tempo ----------
-
   Future<void> applyTempo({required double rate, required bool pitchShift}) async {
     DeveloperLog.player('tempo rate=$rate pitchShift=$pitchShift');
     _rate = rate.clamp(0.25, 8.0).toDouble();
@@ -236,14 +224,11 @@ class PlaybackEngine extends ChangeNotifier {
     if (_mine) await _pushTempo();
   }
 
-  // Pitch shift on: pitch follows speed (tape style). Off: pitch is preserved at any speed.
   Future<void> _pushTempo() async {
     final rate = _rate <= 0 ? 1.0 : _rate;
     await _NativeBus.call('setSpeed', {'value': rate});
     await _NativeBus.call('setPitch', {'value': _pitchShift ? rate : 1.0});
   }
-
-  // ---------- render / HDR ----------
 
   SourceInfo? _src;
   bool _convert = false;
@@ -271,7 +256,6 @@ class PlaybackEngine extends ChangeNotifier {
     _seekTarget = null;
   }
 
-  /// Translates what the native engine knows about the stream into the app's SourceInfo.
   SourceInfo _sourceFrom(Map<dynamic, dynamic> i) {
     final bits = (i['bitDepth'] as num?)?.toInt() ?? 8;
     final hasVideo = (i['hasVideo'] as bool?) ?? false;
@@ -332,7 +316,6 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  // The HDR "look" controls (peak / gamma) shape the software decoder's tone mapping.
   Future<void> _pushTuning() async {
     final t = RenderSettings.instance.tuning(sdr: _sdrMode);
     await _NativeBus.call('setTuning', {'peak': t.peak, 'gamma': t.gamma});
@@ -344,10 +327,6 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The software decoder shapes brightness itself. Hardware decode has no tone shaping, so the
-  /// render-sheet controls are applied as a colour matrix over the texture instead: an encoded-space
-  /// approximation of the software curve (white-level gain, then a straight line through the
-  /// mid-tone gamma curve at 0.5). Null = nothing to apply (software decode, or defaults).
   List<double>? get hardwareTone {
     if (_software || _closed) return null;
     final t = RenderSettings.instance.tuning(sdr: _sdrMode);
@@ -360,12 +339,6 @@ class PlaybackEngine extends ChangeNotifier {
     return <double>[s, 0, 0, 0, off, 0, s, 0, 0, off, 0, 0, s, 0, off, 0, 0, 0, 1, 0];
   }
 
-  Future<void> reapplyRender() async {
-    if (!_mine) return;
-    await _pushTuning();
-    _describe();
-  }
-
   Future<void> setSdrMode(bool sdr) async {
     _sdrMode = sdr;
     appSettings.hdrOn = !sdr;
@@ -373,8 +346,6 @@ class PlaybackEngine extends ChangeNotifier {
     if (_mine) await _pushTuning();
     notifyListeners();
   }
-
-  // ---------- native events ----------
 
   void _onNative(dynamic e) {
     if (e is! Map || _closed) return;
@@ -393,7 +364,7 @@ class PlaybackEngine extends ChangeNotifier {
         DeveloperLog.append('decoder $_decoder');
         _describe();
       case 'ended':
-        if (_opening) break; // stale end of the previous file, the new one has not started
+        if (_opening) break;
         if (_looping) {
           unawaited(_NativeBus.call('play'));
         } else {
@@ -412,8 +383,6 @@ class PlaybackEngine extends ChangeNotifier {
     }
   }
 
-  // While a seek is in flight we show the target instead of the position that is about to be
-  // replaced, so the seek bar does not jump back and forth. It settles near the target.
   Duration? _seekTarget;
   DateTime _seekAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const _seekMinHold = Duration(milliseconds: 250);
@@ -459,13 +428,10 @@ class PlaybackEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------- transport ----------
-
   Future<void> play() async {
     DeveloperLog.player('play');
     wantPlay = true;
     if (_completed) {
-      // Play after the end restarts from 0; do not let the old "completed" flag trigger next.
       _completed = false;
       _pos = Duration.zero;
       _seekTarget = null;
@@ -491,9 +457,6 @@ class PlaybackEngine extends ChangeNotifier {
     }
   }
 
-  /// [fast] snaps to the nearest keyframe instead of decoding up to the exact
-  /// frame. Use it for scrubbing; exact seeks are slow on long-GOP or
-  /// software-decoded video.
   Future<void> seekTo(Duration d, {bool fast = false}) async {
     DeveloperLog.player('seek ${d.inMilliseconds}ms${fast ? ' (keyframe)' : ''}');
     if (!hasPlayer || !_mine) return;
@@ -532,7 +495,6 @@ class PlaybackEngine extends ChangeNotifier {
         await inFlight.timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
-    // Only stop the native player if a newer engine did not already take it over.
     if (wasOwner && identical(_NativeBus.owner, this)) {
       _NativeBus.owner = null;
       await _NativeBus.call('stop');
@@ -555,7 +517,6 @@ class AppVideo extends StatefulWidget {
   final PlaybackEngine engine;
   final BoxFit fit;
 
-  /// The developer log overlay is far too big for small surfaces such as the mini player.
   final bool showLog;
 
   @override
@@ -679,7 +640,6 @@ class _AppVideoState extends State<AppVideo> {
         : ColorFiltered(colorFilter: ColorFilter.matrix(toneMatrix), child: Texture(textureId: id));
     final w = size.width > 1 ? size.width : 16.0;
     final h = size.height > 1 ? size.height : 9.0;
-    // The texture holds the coded frame; the codec's rotation is applied here.
     final video = ColoredBox(
       color: Colors.black,
       child: FittedBox(

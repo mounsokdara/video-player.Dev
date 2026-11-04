@@ -5,8 +5,6 @@ import 'package:video_player_app/about/about_widgets.dart';
 import 'package:video_player_app/about/release_notes.dart';
 import 'package:video_player_app/core/insets.dart';
 
-/// Every release note of the app, read from the GitHub releases (saved in the app's cache folder
-/// for offline use).
 class ChangelogPage extends StatefulWidget {
   const ChangelogPage({super.key});
 

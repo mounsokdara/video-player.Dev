@@ -439,7 +439,7 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!-- The engine draws into a Flutter SurfaceTexture; Skia (GLES) renders that reliably on every device -->
+        
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />

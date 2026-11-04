@@ -91,8 +91,6 @@ class SourceInfo {
   final int h;
   final double fps;
 
-  bool get decoded => pix.isNotEmpty;
-
   bool get hdr {
     if (gamma.contains('hlg') ||
         gamma.contains('pq') ||
@@ -132,39 +130,5 @@ class ScreenInfo {
     } catch (_) {
       return const ScreenInfo(0, 0, 60);
     }
-  }
-}
-
-class RenderCaps {
-  const RenderCaps._();
-  static bool? scale;
-
-  static bool? of(String token) => token == 'scale' ? scale : null;
-
-  static void set(String token, bool value) {
-    if (token == 'scale') scale = value;
-  }
-}
-
-class RenderPlan {
-  const RenderPlan({required this.baseline, required this.extras});
-
-  final String baseline;
-  final List<String> extras;
-
-  String get key => [...extras, if (baseline.isNotEmpty) baseline].join(',');
-
-  String describe(SourceInfo src) =>
-      '${src.w}x${src.h} ${src.fps.toStringAsFixed(0)}fps vf=${key.isEmpty ? '-' : key}';
-}
-
-class RenderProfile {
-  const RenderProfile._();
-
-  static RenderPlan plan({required RenderSettings settings, required SourceInfo src}) {
-    return RenderPlan(
-      baseline: src.needsConvert ? 'format=yuv420p' : '',
-      extras: const [],
-    );
   }
 }

@@ -132,11 +132,6 @@ class PlaybackSession {
       }
       if (!c.value.isInitialized) return;
       final dur = c.value.duration;
-      // Guard: only treat "position near end while paused" as ended when we have
-      // a real duration AND the video has actually started playing at least once
-      // (wantPlay was set). This prevents a false-ended trigger during the brief
-      // window after open() returns but before the native 'state' event sets
-      // isPlaying=true, where position=0 and duration=0 → 0 >= 0-slop is true.
       if (dur > Duration.zero &&
           c.value.position >= dur - _endSlop &&
           !c.value.isPlaying &&
@@ -377,7 +372,6 @@ class PlaybackSession {
     _endedLatch = true;
     switch (appSettings.playMode) {
       case PlayMode.repeatOne:
-        // Always loop the current video.
         try {
           await controller?.seekTo(Duration.zero);
           await controller?.play();
@@ -385,20 +379,15 @@ class PlaybackSession {
         _endedLatch = false;
 
       case PlayMode.noAutoplay:
-        // Stay stopped after the video ends — do nothing.
         return;
 
       case PlayMode.loopAll:
-        // Always advance (wraps around via nextIndex which uses loopAll modulo).
         await skip(1, fromEnd: true);
 
       case PlayMode.shuffle:
-        // Always pick a random next video.
         await skip(1, fromEnd: true);
 
       case PlayMode.order:
-        // Only advance when the user has enabled auto-play next.
-        // If autoPlayNext is off and we're in Order mode, stop at the end.
         if (appSettings.autoPlayNext) {
           await skip(1, fromEnd: true);
         }
@@ -423,7 +412,6 @@ class PlaybackSession {
 
   static Future<void> skip(int delta, {bool fromEnd = false, bool fromError = false}) async {
     if (_busy) {
-      // A switch is still loading: remember the tap so it is applied right after, not lost.
       if (!fromEnd && !fromError) _queuedDelta += delta;
       return;
     }
@@ -433,7 +421,6 @@ class PlaybackSession {
 
     var next = nextIndex(delta: delta);
     if (next == index && delta < 0 && !fromEnd && !fromError) {
-      // Nothing before the first item: restart it (the only case where Previous replays).
       try {
         await controller?.seekTo(Duration.zero);
         if (!(controller?.value.isPlaying ?? false)) await controller?.play();
@@ -488,12 +475,7 @@ class PlaybackSession {
       keepAlive = true;
       _failStreak = 0;
       _listen();
-      // Start playback AFTER _listen() is re-attached but BEFORE clearing the
-      // latch, so any stray completed/ended events that fire during open() are
-      // ignored until we know the new video is actually playing.
       await engine.play();
-      // Only clear the latch once play() has been issued; native 'state' events
-      // that arrive from here on reflect the new video.
       _endedLatch = false;
       onMutated?.call();
       await AndroidBridge.preparePreview(next.path);

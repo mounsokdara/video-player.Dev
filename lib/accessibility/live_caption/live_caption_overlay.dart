@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 
 import 'package:video_player_app/accessibility/live_caption/live_caption_controller.dart';
 
-/// Adapts any [Listenable] playback source (such as the playback engine) to the millisecond
-/// position the overlay needs.
 class EnginePositionListenable implements ValueListenable<int> {
   EnginePositionListenable(this._source, this._read);
   final Listenable _source;
@@ -20,18 +18,13 @@ class EnginePositionListenable implements ValueListenable<int> {
   void removeListener(VoidCallback listener) => _source.removeListener(listener);
 }
 
-/// Caption text plus extraction progress for the video being played. It only draws: the captions
-/// themselves live in [LiveCaptionController], so rebuilding or moving this widget never loses them.
-/// Put it inside an IgnorePointer at the bottom of the video.
 class LiveCaptionOverlay extends StatefulWidget {
   const LiveCaptionOverlay({super.key, required this.path, required this.position, this.compact = false});
 
   final String path;
 
-  /// Playback position in milliseconds.
   final ValueListenable<int> position;
 
-  /// Smaller text for the mini player.
   final bool compact;
 
   @override

@@ -27,7 +27,6 @@ final _options = <_DevOption>[
   _DevOption('Log lifecycle events', 'App/player resume, pause and background transitions', (s) => s.logLifecycleEvents, (s, v) => s.logLifecycleEvents = v),
 ];
 
-/// Shown on the About page only after developer options are unlocked.
 class DeveloperOptionsSection extends StatefulWidget {
   const DeveloperOptionsSection({super.key});
 

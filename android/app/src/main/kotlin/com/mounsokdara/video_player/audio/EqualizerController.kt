@@ -36,7 +36,6 @@ class EqualizerController(
     }
 
     fun audioSessionId(): Int {
-        // Our own engine owns the AudioTrack; its session id is what the effects must attach to.
         val own = com.mounsokdara.video_player.engine.PlayerHolder.player?.audioSessionId() ?: 0
         if (own > 0) return own
         val exo = findExoPlayer() ?: return 0

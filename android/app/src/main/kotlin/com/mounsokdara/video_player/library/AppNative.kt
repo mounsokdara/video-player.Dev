@@ -52,7 +52,6 @@ class AppNative(
                 return true
             }
             NativeConstants.Method.OPEN_ACTIVITY -> {
-                // Screens that run as their own activity: opened with the system slide transition.
                 val target = when (call.argument<String>("route")) {
                     "/settings" -> SettingsActivity::class.java
                     "/general" -> GeneralSettingsActivity::class.java

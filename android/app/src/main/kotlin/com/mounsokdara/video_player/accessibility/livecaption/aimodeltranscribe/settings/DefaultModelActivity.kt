@@ -6,7 +6,6 @@ import com.mounsokdara.video_player.accessibility.livecaption.LiveCaptionPrefs
 import com.mounsokdara.video_player.accessibility.livecaption.ModelStore
 import com.mounsokdara.video_player.accessibility.livecaption.aimodeltranscribe.ClassicActivity
 
-/** Settings > Default model: one radio button per row. */
 class DefaultModelActivity : ClassicActivity() {
     override val screenTitle: String get() = "Default model"
 

@@ -6,7 +6,6 @@ import com.mounsokdara.video_player.accessibility.livecaption.CaptionCache
 import com.mounsokdara.video_player.accessibility.livecaption.LiveCaptionPrefs
 import com.mounsokdara.video_player.accessibility.livecaption.aimodeltranscribe.ClassicActivity
 
-/** Accessibility > Live Caption > Manage AI model > Settings. */
 class SettingsActivity : ClassicActivity() {
     override val screenTitle: String get() = "Settings"
 

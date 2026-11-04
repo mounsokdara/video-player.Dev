@@ -10,7 +10,6 @@ class _Pkg {
   final Set<String> texts = <String>{};
 }
 
-/// Every Dart / plugin license Flutter bundled into the app (LicenseRegistry), grouped by package.
 Future<List<_Pkg>> _loadPackages() async {
   final map = <String, _Pkg>{};
   await for (final entry in LicenseRegistry.licenses) {
@@ -27,7 +26,6 @@ Future<List<_Pkg>> _loadPackages() async {
   return list;
 }
 
-/// Open source licenses. Pure Dart (replaces the old native LicensesActivity).
 class LicensesPage extends StatefulWidget {
   const LicensesPage({super.key});
 

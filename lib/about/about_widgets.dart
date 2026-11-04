@@ -8,7 +8,6 @@ Future<void> openExternal(String url) async {
   } catch (_) {}
 }
 
-/// Rounded card with an icon tile + title header (Dara Hub section style).
 class AboutSection extends StatelessWidget {
   const AboutSection({super.key, required this.icon, required this.title, this.subtitle, required this.child});
   final IconData icon;
@@ -19,8 +18,6 @@ class AboutSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // A Material (not a decorated Container) so ripples of the rows / buttons inside the card are
-    // painted on the card itself instead of behind its opaque background.
     return Material(
       color: cs.surfaceContainer,
       borderRadius: BorderRadius.circular(20),
@@ -54,7 +51,6 @@ class AboutSection extends StatelessWidget {
   }
 }
 
-/// Small pill label (Dara Hub `_Label`).
 class AboutChip extends StatelessWidget {
   const AboutChip(this.text, {super.key, this.icon});
   final String text;
@@ -80,12 +76,10 @@ class AboutItem {
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
-  /// Colors the subtitle like a hyperlink.
   final bool link;
   final bool chevron;
 }
 
-/// Connected rows: big outer corners, 4 dp gaps between rows (Dara Hub GroupedList).
 class AboutGroup extends StatelessWidget {
   const AboutGroup({super.key, required this.items});
   final List<AboutItem> items;
@@ -145,7 +139,6 @@ class AboutGroup extends StatelessWidget {
   }
 }
 
-/// GitHub mark, tinted like any other icon (Material Icons has none).
 class GithubIcon extends StatelessWidget {
   const GithubIcon({super.key, this.size = 26, this.color});
   final double size;
@@ -163,8 +156,6 @@ class QuickAction {
   final VoidCallback onTap;
 }
 
-/// One row of equal tiles: big outer corners on the first / last tile, small inner corners and a
-/// thin gap between tiles. Icon above, label below.
 class AboutQuickActions extends StatelessWidget {
   const AboutQuickActions({super.key, required this.items});
   final List<QuickAction> items;
@@ -174,7 +165,6 @@ class AboutQuickActions extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     const big = Radius.circular(28), small = Radius.circular(4);
     final last = items.length - 1;
-    // Every tile is as tall as the tallest one, whatever icon it holds.
     return IntrinsicHeight(
       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (var i = 0; i < items.length; i++)
@@ -197,7 +187,6 @@ class AboutQuickActions extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 4),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    // Fixed 28 dp slot: the GitHub mark and the Material icons line up and weigh the same.
                     SizedBox(
                       width: 28,
                       height: 28,
@@ -222,7 +211,5 @@ class AboutQuickActions extends StatelessWidget {
   }
 }
 
-/// Back arrow for a page that runs as its own activity (nothing to pop): closes the activity.
-/// Returns null (default back arrow) when the page was pushed inside the app.
 Widget? standaloneBack(BuildContext context) =>
     Navigator.canPop(context) ? null : BackButton(onPressed: SystemNavigator.pop);

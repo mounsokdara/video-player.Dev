@@ -3,10 +3,6 @@ package com.mounsokdara.video_player.engine
 import android.view.Surface
 import java.nio.ByteBuffer
 
-/**
- * JNI bridge to the software video decoder (FFmpeg libavcodec, decode only). Used only for streams
- * the phone's own decoders cannot handle, such as HEVC Main 10 on chips without 10-bit support.
- */
 object SwNative {
     val available: Boolean = try {
         System.loadLibrary("swdecode")

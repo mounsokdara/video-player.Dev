@@ -10,23 +10,14 @@ class SystemBars {
   static bool alwaysHide = false;
   static Brightness iconBrightness = Brightness.light;
 
-  /// Last `contrast` given to [apply]: false = transparent navigation bar (player), true = system default.
   static bool lastContrast = true;
 
-  /// true everywhere except the player. On Android 15+ (targetSdk 35+) the system ignores
-  /// `navigationBarColor`, so the bar is always transparent; this drives a solid strip painted
-  /// behind it (see [SolidNavBarStrip]).
   static final ValueNotifier<bool> solidNav = ValueNotifier<bool>(true);
 
-  /// Color of the strip. null = the page surface. The home tabs set the color of their bottom
-  /// NavigationBar so the strip continues it; the player (watch layout) uses the plain surface.
   static final ValueNotifier<Color?> stripColor = ValueNotifier<Color?>(null);
 
-  /// What the home tabs asked for, restored when the player closes.
   static Color? homeStrip;
 
-  /// Popup routes (dialogs, sheets, menus) currently open, bottom to top. The strip lives above
-  /// the Navigator, so it would stay undimmed under a barrier; it blends these barriers itself.
   static final ValueNotifier<List<PopupRoute<dynamic>>> popups = ValueNotifier<List<PopupRoute<dynamic>>>(const []);
 
   static void _popupOpened(PopupRoute<dynamic> r) {
@@ -42,7 +33,6 @@ class SystemBars {
     });
   }
 
-  /// [base] with every open popup's barrier painted over it (fading with the route's animation).
   static Color dimmed(Color base) {
     var c = base;
     for (final r in popups.value) {
@@ -61,7 +51,6 @@ class SystemBars {
 
   static void _setSolidNav(bool v) {
     if (solidNav.value == v) return;
-    // apply() is also called from build(); notify after the frame.
     WidgetsBinding.instance.addPostFrameCallback((_) => solidNav.value = v);
   }
 
@@ -71,8 +60,6 @@ class SystemBars {
     return MediaQueryData.fromView(View.of(context)).viewPadding;
   }
 
-  /// Bottom system bar height, taking the larger of the raw view padding and the (possibly
-  /// consumed) MediaQuery value, so a sheet or page never ends up under the navigation bar.
   static double bottomInset(BuildContext context) {
     final raw = rawOf(context).bottom;
     final mq = MediaQuery.viewPaddingOf(context).bottom;
@@ -84,7 +71,6 @@ class SystemBars {
     final bar = icons == Brightness.light ? Brightness.dark : Brightness.light;
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      // Always transparent: the solid color is painted by [SolidNavBarStrip], never by the system.
       systemNavigationBarColor: Colors.transparent,
       systemNavigationBarDividerColor: Colors.transparent,
       statusBarIconBrightness: status,
@@ -147,8 +133,6 @@ class SystemBars {
   }
 }
 
-/// Solid bar behind the system navigation bar: shown on every page except the fullscreen player,
-/// which keeps it fully transparent. Put it above the app's content (it ignores pointers).
 class SolidNavBarStrip extends StatelessWidget {
   const SolidNavBarStrip({super.key, required this.child});
   final Widget child;
@@ -158,8 +142,6 @@ class SolidNavBarStrip extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(child: child),
-        // Outer: which popups are open. Inner: their barrier fade animations, so the strip dims
-        // and un-dims in step with the page.
         ListenableBuilder(
           listenable: Listenable.merge([SystemBars.solidNav, SystemBars.stripColor, SystemBars.popups]),
           builder: (context, _) {
@@ -190,11 +172,6 @@ class SolidNavBarStrip extends StatelessWidget {
   }
 }
 
-/// Keeps a page clear of the left / right system bars (navigation bar in landscape, cutouts).
-///
-/// It only pads [child] by those insets (and removes them from the [MediaQuery] it gives [child],
-/// so nested zones never pad twice). The bar itself is left to the system: nothing is painted over
-/// it. The bottom inset is not padded here, pages add it to their own list padding.
 class SystemBarSafeZone extends StatelessWidget {
   const SystemBarSafeZone({super.key, required this.child});
   final Widget child;

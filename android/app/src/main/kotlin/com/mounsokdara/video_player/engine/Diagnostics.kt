@@ -8,11 +8,6 @@ import android.media.MediaFormat
 import android.os.Build
 import android.os.SystemClock
 
-/**
- * Headless decoder test: for every decoder x config on this device, decode the first frame of the
- * file into a ByteBuffer (no Surface) and report exactly which call fails. Comparing this with the
- * on-screen player tells us whether decoding or rendering is the problem.
- */
 object Diagnostics {
     private fun describe(e: Throwable): String {
         val sb = StringBuilder(e.javaClass.simpleName)

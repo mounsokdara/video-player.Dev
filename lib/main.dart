@@ -27,8 +27,6 @@ final library = LibraryService(appSettings);
 
 int? _lastWindowBg;
 
-/// Remembers the app surface color so native activities (Settings) can paint
-/// their window with it before Flutter draws, instead of flashing black.
 void _rememberWindowBg(int argb) {
   if (_lastWindowBg == argb) return;
   _lastWindowBg = argb;
@@ -37,7 +35,6 @@ void _rememberWindowBg(int argb) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Our playback engine bundles FFmpeg's decoders (LGPL) for streams the phone cannot decode.
   LicenseRegistry.addLicense(() async* {
     final text = await rootBundle.loadString('assets/licenses/LGPL-2.1.txt');
     yield LicenseEntryWithLineBreaks(
@@ -90,7 +87,6 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       SharedPreferences.getInstance().then((p) => p.reload()).then((_) => appSettings.load()).then((_) {
-        // The equalizer may have been changed in its own activity: apply it to this engine's audio.
         AndroidBridge.applyEqualizer(
           enabled: appSettings.eqEnabled,
           bands: appSettings.eqBands,
@@ -109,7 +105,6 @@ class _VideoPlayerAppState extends State<VideoPlayerApp> with WidgetsBindingObse
     appSettings.save();
   }
 
-  /// Pages that also run as their own launchable activity (see the *Activity.kt classes).
   Widget? _standalone(String route) {
     switch (route) {
       case '/about':

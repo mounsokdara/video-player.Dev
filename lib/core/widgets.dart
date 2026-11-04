@@ -606,7 +606,6 @@ Future<String?> promptText(BuildContext context, String title, String initial, {
   }
 }
 
-/// Asks for a new name until it is acceptable (see [renameError]); null when cancelled or unchanged.
 Future<String?> promptRename(BuildContext context, String path, {bool isDir = false}) async {
   final current = pth.basename(path);
   final dir = pth.dirname(path);
@@ -717,8 +716,6 @@ Future<void> showFolderEntryMenu(
   );
 }
 
-/// Opens [route] as its own activity (system slide transition); if that activity is unavailable,
-/// pushes [fallback] inside the app instead.
 Future<void> openPage(BuildContext context, String route, Widget Function() fallback) async {
   if (await AndroidBridge.openRoute(route)) return;
   if (!context.mounted) return;

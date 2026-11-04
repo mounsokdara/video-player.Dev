@@ -10,10 +10,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 
-/**
- * Base for the classic (Android 4 era) Live Caption screens: black legacy theme, gray title bar,
- * big white list rows with gray captions and thin dividers. Built in code, no Flutter.
- */
 abstract class ClassicActivity : Activity() {
     protected lateinit var list: LinearLayout
     protected val dp: Float get() = resources.displayMetrics.density
@@ -37,7 +33,6 @@ abstract class ClassicActivity : Activity() {
         build()
     }
 
-    /** A list row. [trailing] is shown on the right; [onClick] runs when the row is tapped. */
     protected fun addRow(titleText: String, subtitle: String?, trailing: View?, onClick: () -> Unit): Row {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL

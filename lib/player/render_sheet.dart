@@ -51,10 +51,7 @@ class _RenderSheetState extends State<_RenderSheet> {
   Widget build(BuildContext context) {
     final e = _e;
     final active = e != null && e.hasPlayer;
-    // Re-read tune AFTER _sdr is current so sliders always reflect the right profile.
     final tune = _rs.tuning(sdr: _sdr);
-    // Show HDR toggle only when the source actually needs HDR tone-mapping.
-    // For SDR videos _convert is false, so we lock the selector and show SDR tuning.
     final sourceIsHdr = e?.hdrActive ?? false;
 
     return SafeArea(
@@ -75,9 +72,6 @@ class _RenderSheetState extends State<_RenderSheet> {
                   ButtonSegment<bool>(value: true, label: Text('SDR')),
                 ],
                 selected: {_sdr},
-                // Only allow switching when active AND the source is an HDR video.
-                // SDR videos always use the SDR tuning profile; showing the toggle
-                // for them was what caused HDR settings to overwrite SDR ones.
                 onSelectionChanged: (active && sourceIsHdr)
                     ? (s) {
                         final newSdr = s.first;
@@ -91,9 +85,6 @@ class _RenderSheetState extends State<_RenderSheet> {
                       ? 'Switches HDR↔SDR tone mapping live for this HDR video.'
                       : 'This video is SDR — brightness controls apply the SDR tuning profile.')
                   : 'Start a video to change the render mode.'),
-              // The title and all sliders below always use the _sdr-keyed profile,
-              // so editing brightness for an SDR source writes to peakSdr/gammaSdr
-              // and editing for an HDR source (HDR mode) writes to peakHdr/gammaHdr.
               _title('${_sdr ? 'SDR' : 'HDR'} brightness'),
               Text('White level: ${tune.peak} nits (higher = brighter)'),
               Slider(
@@ -101,7 +92,6 @@ class _RenderSheetState extends State<_RenderSheet> {
                 min: 100,
                 max: 1000,
                 onChanged: (v) {
-                  // Capture current _sdr to avoid a race if the toggle fires mid-drag.
                   final forSdr = _sdr;
                   setState(() => _rs.setTuning(sdr: forSdr, peak: v.round()));
                   e?.retune();

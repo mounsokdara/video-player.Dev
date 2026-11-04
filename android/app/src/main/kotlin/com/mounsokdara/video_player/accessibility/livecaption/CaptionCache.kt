@@ -6,12 +6,6 @@ import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
 
-/**
- * Per-video caption cache in `cacheDir/livecaption/<key>.jsonl`. Every extracted phrase is appended
- * the moment it is ready, together with the time ranges already processed, so nothing is lost if
- * the app is closed and a replay only extracts what is still missing. The key covers the file,
- * its size and date, the AI model and the language.
- */
 class CaptionCache private constructor(private val file: File) {
     class Cue(val start: Long, val end: Long, val text: String)
 
@@ -38,10 +32,6 @@ class CaptionCache private constructor(private val file: File) {
         append(JSONObject().put("d", org.json.JSONArray().put(a).put(b)).toString())
     }
 
-    /**
-     * First not-yet-extracted part at or after [from]; when nothing is left after it, the first gap
-     * before it. Null when the whole video is covered (gaps under 2.5 s are ignored).
-     */
     @Synchronized
     fun nextGap(from: Long, durationMs: Long): LongArray? {
         val total = if (durationMs > 0) durationMs else Long.MAX_VALUE / 4
@@ -89,7 +79,6 @@ class CaptionCache private constructor(private val file: File) {
                         o.has("d") -> ranges.add(longArrayOf(o.getJSONArray("d").getLong(0), o.getJSONArray("d").getLong(1)))
                     }
                 } catch (_: Throwable) {
-                    // A half-written last line is ignored.
                 }
             }
         } catch (_: Throwable) {
@@ -113,7 +102,6 @@ class CaptionCache private constructor(private val file: File) {
             return cache
         }
 
-        /** (number of cached videos, bytes used). */
         fun stats(c: Context): Pair<Int, Long> {
             val files = dir(c).listFiles()?.filter { it.isFile } ?: return 0 to 0L
             return files.size to files.sumOf { it.length() }

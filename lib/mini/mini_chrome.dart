@@ -50,7 +50,6 @@ class MiniTransportBar extends StatelessWidget {
     this.onControlDown,
   });
 
-  /// Called when a touch starts on one of the buttons (so the card does not treat it as a tap-to-expand).
   final VoidCallback? onControlDown;
 
   final String title;
@@ -79,8 +78,6 @@ class MiniTransportBar extends StatelessWidget {
             );
             final next = _BarButton(icon: Icons.skip_next_rounded, width: bw, onTap: onNext, onDown: onControlDown);
             if (compact) {
-              // Narrow card: a clipped one-word title is useless, so the three
-              // buttons share the full width evenly and stay centered.
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [prev, play, next],

@@ -4,7 +4,6 @@ import android.widget.RadioButton
 import com.mounsokdara.video_player.accessibility.livecaption.LiveCaptionPrefs
 import com.mounsokdara.video_player.accessibility.livecaption.aimodeltranscribe.ClassicActivity
 
-/** Settings > Default language: one radio button per row. */
 class DefaultLangActivity : ClassicActivity() {
     override val screenTitle: String get() = "Default language"
 

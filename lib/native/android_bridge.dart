@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
@@ -24,10 +23,6 @@ class AndroidBridge {
     return _events!;
   }
 
-  /// Opens the native Settings activity (separate screen, own back stack).
-  /// Opens a screen that has its own activity (`/settings`, `/general`, `/video`, `/accessibility`,
-  /// `/theme`, `/about`, `/equalizer`, `/licenses`, `/changelog`, `/console`) with the system slide transition.
-  /// False when there is no such activity (callers fall back to an in-app route).
   static Future<bool> openRoute(String route) async {
     try {
       return await _ch.invokeMethod<bool>('openActivity', {'route': route}) ?? false;
@@ -39,28 +34,24 @@ class AndroidBridge {
   static const _capEv = EventChannel('app.videoplayer/captions');
   static Stream<Map<String, dynamic>>? _captionEvents;
 
-  /// Live caption cues and status pushed by the native engine (`type`: `cue` or `status`).
   static Stream<Map<String, dynamic>> captionEvents() {
     if (_captionEvents == null) {
       final raw = _capEv
           .receiveBroadcastStream()
           .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{'type': '$e'})
           .handleError((_) {});
-      // Keep the native subscription open even while no overlay is listening.
       _captionEvents = raw.asBroadcastStream(onCancel: (_) {});
       _captionEvents!.listen((_) {});
     }
     return _captionEvents!;
   }
 
-  /// Opens the system caption style screen.
   static Future<void> openCaptionSettings() async {
     try {
       await _ch.invokeMethod<bool>('openCaptionSettings');
     } catch (_) {}
   }
 
-  /// `{ready, runtime, model}`: whether the speech engine and an AI model are downloaded.
   static Future<Map<String, dynamic>> liveCaptionStatus() async {
     try {
       final r = await _ch.invokeMethod<Map<Object?, Object?>>('liveCaptionStatus');
@@ -194,7 +185,6 @@ class AndroidBridge {
     }
   }
 
-  /// Asks the media scanner to re-read [paths] (adds new files, drops rows of files that are gone).
   static Future<void> scanPaths(List<String> paths) async {
     try {
       await _ch.invokeMethod<void>('scanPaths', {'paths': paths});
@@ -445,7 +435,6 @@ class AndroidBridge {
     } catch (_) {}
   }
 
-  /// Persisted debug log text (native app storage), used by the Console page.
   static Future<String> readDebugLog() async {
     try {
       return await _ch.invokeMethod<String>('readDebugLog') ?? '';
@@ -454,7 +443,6 @@ class AndroidBridge {
     }
   }
 
-  /// Crash breadcrumbs text for the Console page.
   static Future<String> peekCrash() async {
     try {
       return await _ch.invokeMethod<String>('peekCrash') ?? '';

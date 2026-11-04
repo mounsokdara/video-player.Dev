@@ -11,9 +11,6 @@ class CaptionCue {
   final String text;
 }
 
-/// Owns the live caption session for the current video. It lives outside any widget, so the
-/// captions survive hiding or showing the controls, switching between the full player and the mini
-/// player, and leaving the player: overlays only attach to it and draw what it holds.
 class LiveCaptionController extends ChangeNotifier {
   LiveCaptionController._();
   static final LiveCaptionController instance = LiveCaptionController._();
@@ -39,10 +36,8 @@ class LiveCaptionController extends ChangeNotifier {
   int durationMs = 0;
   bool showReady = false;
 
-  /// 0..1 share of the video whose captions are extracted, or null when the length is unknown.
   double? get progress => durationMs > 0 ? (coveredMs / durationMs).clamp(0.0, 1.0) : null;
 
-  /// Status line for the small chip above the captions, or null to show nothing.
   String? get chipText {
     switch (state) {
       case 'needs_model':
@@ -62,7 +57,6 @@ class LiveCaptionController extends ChangeNotifier {
     return null;
   }
 
-  /// Progress bar value for the chip (only while extracting).
   double? get chipProgress => (state == 'running' || state == 'waiting') ? progress : null;
 
   String textAt(int ms) {
@@ -96,7 +90,6 @@ class LiveCaptionController extends ChangeNotifier {
     _position = null;
     _owner = null;
     _debounce?.cancel();
-    // Keep working briefly: the mini player or the player may attach right after.
     _stopTimer?.cancel();
     _stopTimer = Timer(const Duration(seconds: 5), () {
       if (_owner == null && _running) {
@@ -128,8 +121,6 @@ class LiveCaptionController extends ChangeNotifier {
     });
   }
 
-  /// Starts (or restarts) the engine once the position has settled, so a burst of position changes
-  /// never restarts it over and over.
   void _requestStart({int delayMs = 400}) {
     _debounce?.cancel();
     _debounce = Timer(Duration(milliseconds: delayMs), () {
@@ -152,7 +143,7 @@ class LiveCaptionController extends ChangeNotifier {
     final jump = ms - _lastPos;
     _lastPos = ms;
     if (jump.abs() > 2500) {
-      _requestStart(); // seek
+      _requestStart();
     } else if ((ms - _lastSent).abs() > 1500) {
       _lastSent = ms;
       unawaited(AndroidBridge.liveCaptionPlayhead(ms));
@@ -174,7 +165,7 @@ class LiveCaptionController extends ChangeNotifier {
   }
 
   void _onEvent(Map<String, dynamic> e) {
-    if (e['path'] != _path) return; // stale event from another video
+    if (e['path'] != _path) return;
     switch (e['type']) {
       case 'cues':
         final list = e['list'];

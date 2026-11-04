@@ -1,7 +1,3 @@
-// Software video decode for streams the phone's own decoders cannot do (e.g. HEVC Main 10).
-// FFmpeg's libavcodec only decodes; demuxing, timing, seeking and audio stay in our engine.
-// Frames are converted (YUV 4:2:0 8/10-bit -> RGBA, with HDR -> SDR tone mapping) straight into
-// the output Surface.
 #include <jni.h>
 #include <android/log.h>
 #include <android/native_window.h>
@@ -39,8 +35,8 @@ struct Sw {
     int threads = 4;
     uint8_t lut[1024];
     int lutTrc = -1;
-    int tunePeak = 203;   // nits, 203 = SDR white (neutral)
-    int tuneGamma = 0;    // -100..100
+    int tunePeak = 203;
+    int tuneGamma = 0;
 };
 
 struct Conv {
@@ -52,7 +48,6 @@ Conv makeConv(bool bt2020, bool full) {
     const double kgu = bt2020 ? 0.16455 : 0.1873;
     const double kgv = bt2020 ? 0.57135 : 0.4681;
     const double kbu = bt2020 ? 1.8814 : 1.8556;
-    // Work on a 0..1023 scale. Limited range: Y 64..940, C 64..960 (+-448 around 512).
     const double ys = full ? 1.0 : 1023.0 / 876.0;
     const double cs = full ? 1.0 : 1023.0 / 896.0;
     Conv c;
@@ -70,11 +65,6 @@ double srgbEncode(double t) {
     return t <= 0.0031308 ? 12.92 * t : 1.055 * std::pow(t, 1.0 / 2.4) - 0.055;
 }
 
-// Encoded value (0..1023) -> 8-bit SDR output value.
-//  tunePeak (nits): 203 = SDR white. Higher brightens ("HDR look"): gain = sqrt(peak / 203).
-//  tuneGamma (-100..100): positive lifts the mid-tones.
-//  HLG is designed to look right on SDR screens, so it passes through (gain/gamma only).
-//  PQ (HDR10) is tone-mapped: nits -> extended Reinhard around 203 nit reference white -> sRGB.
 void buildLut(Sw* s, int trc) {
     const double gain = std::sqrt(std::min(std::max(s->tunePeak / 203.0, 0.25), 4.0));
     const double gexp = 1.0 / (1.0 + std::min(std::max(s->tuneGamma / 100.0, -0.9), 0.9));
@@ -92,7 +82,7 @@ void buildLut(Sw* s, int trc) {
             double t = x * (1.0 + x / (w * w)) / (1.0 + x);
             out = srgbEncode(t);
         } else {
-            double lin = std::pow(v, 2.2) * gain;  // SDR / HLG: simple exposure gain in linear light
+            double lin = std::pow(v, 2.2) * gain;
             out = std::pow(std::min(lin, 1.0), 1.0 / 2.2);
         }
         out = std::pow(std::min(std::max(out, 0.0), 1.0), gexp);
@@ -147,7 +137,7 @@ void freeAll(Sw* s) {
     delete s;
 }
 
-}  // namespace
+}
 
 extern "C" {
 
@@ -189,7 +179,7 @@ JNIEXPORT jint JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nSend(
     s->pkt->size = size;
     s->pkt->pts = ptsUs;
     s->pkt->dts = ptsUs;
-    int r = avcodec_send_packet(s->ctx, s->pkt);  // copies the data (no refcounted buffer)
+    int r = avcodec_send_packet(s->ctx, s->pkt);
     s->pkt->data = nullptr;
     s->pkt->size = 0;
     return r;
@@ -200,8 +190,6 @@ JNIEXPORT jint JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nSendE
     return s ? avcodec_send_packet(s->ctx, nullptr) : -1;
 }
 
-// Returns the pts (us) of the next decoded frame, or Long.MIN_VALUE (need input),
-// +1 (end of stream), +2 (error).
 JNIEXPORT jlong JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nReceive(JNIEnv*, jclass, jlong h) {
     Sw* s = S(h);
     if (!s) return INT64_MIN + 2;
@@ -225,7 +213,7 @@ JNIEXPORT jint JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nPrese
     const bool hi = f->format == AV_PIX_FMT_YUV420P10LE;
     if (!hi && f->format != AV_PIX_FMT_YUV420P) {
         av_frame_unref(f); s->have = false;
-        return -2;  // unsupported pixel format
+        return -2;
     }
     if (s->winW != f->width || s->winH != f->height) {
         ANativeWindow_setBuffersGeometry(s->win, f->width, f->height, WINDOW_FORMAT_RGBA_8888);
@@ -272,7 +260,6 @@ JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nFlush
     s->have = false;
 }
 
-// 0 = decode everything, 1 = skip non-reference frames, 2 = key frames only
 JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nSetSkip(JNIEnv*, jclass, jlong h, jint mode) {
     Sw* s = S(h);
     if (!s) return;
@@ -284,16 +271,16 @@ JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nSetTu
     if (!s) return;
     s->tunePeak = peak;
     s->tuneGamma = gamma;
-    s->lutTrc = -1;  // rebuild on the next frame
+    s->lutTrc = -1;
 }
 
 JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nRelease(JNIEnv*, jclass, jlong h) {
     freeAll(S(h));
 }
 
-}  // extern "C"
+}
 
-#else  // !HAVE_FFMPEG: the FFmpeg static libs were not built; every call reports "unavailable".
+#else
 
 extern "C" {
 JNIEXPORT jlong JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nCreate(JNIEnv*, jclass, jbyteArray, jint, jint) { return 0; }
@@ -309,4 +296,4 @@ JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nSetTu
 JNIEXPORT void JNICALL Java_com_mounsokdara_video_1player_engine_SwNative_nRelease(JNIEnv*, jclass, jlong) {}
 }
 
-#endif  // HAVE_FFMPEG
+#endif

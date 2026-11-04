@@ -5,9 +5,6 @@ import 'package:video_player_app/native/android_bridge.dart';
 import 'package:video_player_app/settings/settings.dart';
 import 'package:video_player_app/settings/settings_ui.dart' show settingsBackLeading;
 
-/// Accessibility > Live Caption (`/live-caption`, hosted by `LiveCaptionActivity`).
-/// Toggle for the player's live captions, a shortcut to the system caption style screen, and the
-/// entry to the classic "Manage AI model" screens (download and defaults).
 class LiveCaptionPage extends StatefulWidget {
   const LiveCaptionPage({super.key});
 

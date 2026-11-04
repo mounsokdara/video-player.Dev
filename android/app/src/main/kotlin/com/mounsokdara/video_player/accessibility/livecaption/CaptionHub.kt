@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Looper
 import io.flutter.plugin.common.EventChannel
 
-/** Event channel `app.videoplayer/captions`: pushes caption cues and status to the Dart overlay. */
 object CaptionHub : EventChannel.StreamHandler {
     @Volatile
     private var sink: EventChannel.EventSink? = null

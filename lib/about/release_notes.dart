@@ -6,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:video_player_app/about/about_info.dart';
 
-/// One published GitHub release of the app.
 class ReleaseNote {
   const ReleaseNote({
     required this.tag,
@@ -26,7 +25,6 @@ class ReleaseNote {
   final DateTime? publishedAt;
   final bool prerelease;
 
-  /// Tag without the leading "v" (`v1.0.2.4` -> `1.0.2.4`).
   String get version => tag.replaceFirst(RegExp(r'^[vV]'), '');
 
   factory ReleaseNote.fromJson(Map<String, dynamic> j) {
@@ -63,21 +61,16 @@ class ReleaseNote {
       };
 }
 
-/// Result of [ReleaseNotes.load].
 class ReleaseFeed {
   const ReleaseFeed({required this.releases, required this.fromCache, this.error, this.savedAt});
 
-  /// Newest first, as GitHub returns them.
   final List<ReleaseNote> releases;
 
-  /// True when the list is the saved copy (offline or the request failed).
   final bool fromCache;
   final String? error;
 
-  /// When the saved copy was fetched from GitHub.
   final DateTime? savedAt;
 
-  /// Highest stable version published (falls back to any release when there is no stable one).
   ReleaseNote? get latest {
     ReleaseNote? best;
     for (final stable in const [true, false]) {
@@ -95,7 +88,6 @@ class ReleaseFeed {
 List<int> _parse(String v) =>
     RegExp(r'\d+').allMatches(v).map((m) => int.parse(m.group(0)!)).toList();
 
-/// Compares dotted versions numerically (`1.0.2.10` > `1.0.2.9`); missing parts count as 0.
 int compareVersions(String a, String b) {
   final x = _parse(a), y = _parse(b);
   for (var i = 0; i < (x.length > y.length ? x.length : y.length); i++) {
@@ -105,9 +97,6 @@ int compareVersions(String a, String b) {
   return 0;
 }
 
-/// Release notes straight from the GitHub releases of the app (not the CHANGELOG.md in the repo).
-/// The last successful answer is saved in the app's own cache directory (app data, internal
-/// storage: never Android/data), so the changelog also opens offline.
 class ReleaseNotes {
   ReleaseNotes._();
 
@@ -147,9 +136,6 @@ class ReleaseNotes {
     } catch (_) {}
   }
 
-  /// Returns the saved copy while it is younger than an hour, otherwise asks GitHub. [refresh]
-  /// always asks GitHub. When GitHub cannot be reached the saved copy (if any) is returned with
-  /// [ReleaseFeed.fromCache] set.
   static Future<ReleaseFeed> load({bool refresh = false}) async {
     final saved = await _readSaved();
     if (!refresh && saved != null && saved.savedAt != null) {
@@ -181,7 +167,6 @@ class ReleaseNotes {
   }
 }
 
-/// Release-note markdown reduced to readable plain text (links, bold, code marks removed).
 String plainNotes(String md) {
   var s = md;
   s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m.group(1)!);

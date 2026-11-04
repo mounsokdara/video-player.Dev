@@ -19,7 +19,6 @@ import 'package:video_player_app/core/material_you.dart';
 import 'package:video_player_app/core/widgets.dart';
 import 'package:video_player_app/about/about_widgets.dart' show standaloneBack;
 
-/// One entry in the settings sidebar / category list.
 class _SettingsCategory {
   const _SettingsCategory(this.icon, this.title, this.sub, this.build);
   final IconData icon;
@@ -35,15 +34,10 @@ final _settingsCategories = <_SettingsCategory>[
   _SettingsCategory(Icons.palette_outlined, 'Theme', 'Dark / light / system and seed color', (c) => ThemeSettings(onChanged: c)),
 ];
 
-/// Route name -> index in [_settingsCategories], for the per-category activities.
 const _standaloneCategory = {'/general': 0, '/video': 1, '/accessibility': 2, '/theme': 3};
 
-/// Activity route of each entry in [_settingsCategories].
 const _categoryRoutes = ['/general', '/video', '/accessibility', '/theme'];
 
-/// Full-screen page for an activity that shows one settings category (or the equalizer) on its own,
-/// or null for any other route. Reuses the same widgets as the Settings activity; the back arrow
-/// closes the activity.
 Widget? standaloneSettingsPage(String route, VoidCallback onChanged) {
   if (route == '/equalizer') return const EqualizerPage();
   switch (route) {
@@ -61,12 +55,8 @@ Widget? standaloneSettingsPage(String route, VoidCallback onChanged) {
   return _SettingsBack(onBack: SystemNavigator.pop, child: _settingsCategories[i].build(onChanged));
 }
 
-/// Width from which the Settings screen shows its tabs sidebar.
 const double kSettingsSidebarWidth = 840;
 
-/// Root of the Settings activity (`/settings`).
-/// Phones: category list. Large screens: tabs sidebar on the left, the
-/// selected category on the right.
 class SettingsHost extends StatefulWidget {
   const SettingsHost({super.key, required this.onChanged});
   final VoidCallback onChanged;
@@ -76,7 +66,6 @@ class SettingsHost extends StatefulWidget {
 }
 
 class _SettingsHostState extends State<SettingsHost> {
-  /// Category selected in the sidebar (large screens); the first one while still null.
   int? _picked;
 
   void _close() => SystemNavigator.pop();
@@ -85,15 +74,12 @@ class _SettingsHostState extends State<SettingsHost> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= kSettingsSidebarWidth;
     if (!wide) {
-      // Tabs sidebar hidden: the list of categories; each one opens as its own activity with the
-      // system slide transition (see SettingsHub).
       return Scaffold(body: SettingsHub(onChanged: widget.onChanged, onBack: _close));
     }
     final selected = _picked ?? 0;
     final scheme = Theme.of(context).colorScheme;
     final pad = MediaQuery.viewPaddingOf(context);
     final cat = _settingsCategories[selected];
-    // Round icon colors per category, like the account-style sidebar.
     final iconBg = <Color>[
       scheme.primaryContainer,
       scheme.tertiaryContainer,
@@ -109,11 +95,9 @@ class _SettingsHostState extends State<SettingsHost> {
     return SystemBarSafeZone(child: Scaffold(
       backgroundColor: scheme.surface,
       body: Padding(
-        // Side insets are handled by the SystemBarSafeZone around this Scaffold.
         padding: EdgeInsets.zero,
         child: Row(
           children: [
-            // Sidebar tabs: only built on large screens. Phones never see it.
             SizedBox(
               width: 320,
               child: ListView(
@@ -183,8 +167,6 @@ class _SettingsHostState extends State<SettingsHost> {
   }
 }
 
-/// Lets a category page (shown full screen on a phone) draw a back arrow that
-/// returns to the main settings list. Absent in the large-screen detail pane.
 class _SettingsBack extends InheritedWidget {
   const _SettingsBack({required this.onBack, required super.child});
   final VoidCallback onBack;
@@ -201,7 +183,6 @@ Widget? settingsBackLeading(BuildContext context) {
   return back == null ? null : BackButton(onPressed: back);
 }
 
-/// Category list shown on phones inside the Settings activity.
 class SettingsHub extends StatelessWidget {
   const SettingsHub({super.key, required this.onChanged, this.onBack});
   final VoidCallback onChanged;
@@ -248,7 +229,6 @@ class SettingsHub extends StatelessWidget {
   }
 }
 
-/// The "More" tab: opens the Settings activity, plus equalizer, crash report, about.
 class MoreHub extends StatelessWidget {
   const MoreHub({super.key, required this.onChanged});
   final VoidCallback onChanged;
@@ -720,7 +700,6 @@ class _ThemeSettingsState extends State<ThemeSettings> {
         children: [
           const Text('Appearance', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          // Theme button, same control as Khmer Calendar: text-only, full width, check mark on wide screens.
           LayoutBuilder(
             builder: (ctx, box) => FittedBox(
               fit: BoxFit.scaleDown,
@@ -758,7 +737,6 @@ class _ThemeSettingsState extends State<ThemeSettings> {
                 children: [
                   const Text('Material You color', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  // Same colour plates as Khmer Calendar.
                   MaterialYouChips(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     selected: Color(s.seedColor),
@@ -878,7 +856,6 @@ class _EqualizerPageState extends State<EqualizerPage> {
     return (appSettings.eqBands[i] / 100).clamp(minDb, maxDb).toDouble();
   }
 
-  /// Width from which the equalizer switches to the two-pane large-screen layout.
   static const double _wideWidth = 720;
 
   String _hzLabel(int i) {
@@ -909,8 +886,6 @@ class _EqualizerPageState extends State<EqualizerPage> {
     return ChipScroller(children: chips);
   }
 
-  /// The ten band sliders. [height] is the slider track height; with [scale] a dB ruler is drawn on
-  /// the left (large screens).
   Widget _bands(double height, {required bool scale}) {
     final s = appSettings;
     final cs = Theme.of(context).colorScheme;
@@ -1018,7 +993,6 @@ class _EqualizerPageState extends State<EqualizerPage> {
 
   Widget _card(Widget child) {
     final cs = Theme.of(context).colorScheme;
-    // Material so the switch rows inside paint their ripple on the card.
     return Material(
       color: cs.surfaceContainer,
       borderRadius: BorderRadius.circular(20),
@@ -1057,7 +1031,6 @@ class _EqualizerPageState extends State<EqualizerPage> {
         builder: (context, box) {
           final wide = box.maxWidth >= _wideWidth;
           if (!wide) {
-            // Phones: one column, capped width so a tall tablet in portrait does not stretch it.
             return Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
@@ -1077,8 +1050,6 @@ class _EqualizerPageState extends State<EqualizerPage> {
               ),
             );
           }
-          // Large screens: bands on the left (as tall as the screen allows), presets and effects
-          // in a side column, everything centred with a maximum width.
           final bandHeight = (box.maxHeight - 130 - bottom).clamp(260.0, 480.0).toDouble();
           return Align(
             alignment: Alignment.topCenter,

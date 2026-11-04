@@ -6,8 +6,6 @@ import 'package:video_player_app/core/developer_log.dart';
 import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/native/android_bridge.dart';
 
-/// Debug log + crash breadcrumbs. Pure Dart (replaces the old native ConsoleActivity).
-/// The log text itself still lives in app storage on the native side, so it survives restarts.
 class ConsolePage extends StatefulWidget {
   const ConsolePage({super.key});
 

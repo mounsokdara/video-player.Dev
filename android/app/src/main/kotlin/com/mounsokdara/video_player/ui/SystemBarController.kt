@@ -16,7 +16,6 @@ class SystemBarController(private val activity: Activity) {
     private var hideGen = 0
     private var uiListenerAttached = false
 
-    /** The window's own navigation bar color, so leaving a transparent screen (the player) restores it. */
     private var defaultNavColor: Int? = null
 
     private fun rememberDefaultNavColor(window: Window) {
@@ -36,8 +35,6 @@ class SystemBarController(private val activity: Activity) {
             }
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             window.statusBarColor = Color.TRANSPARENT
-            // Always transparent with no system scrim: the solid color behind the bar is painted
-            // by the app (SolidNavBarStrip), so every screen and every Android version looks the same.
             window.navigationBarColor = Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= 29) {
                 window.isNavigationBarContrastEnforced = false
@@ -120,8 +117,6 @@ class SystemBarController(private val activity: Activity) {
     private fun showBars(window: Window, lightIcons: Boolean, contrast: Boolean) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.TRANSPARENT
-        // Always fully transparent. A solid bar is the app's SolidNavBarStrip; letting the system
-        // draw its default color / contrast scrim here is what tinted the strip gray.
         window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)

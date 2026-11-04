@@ -13,8 +13,6 @@ import 'package:video_player_app/core/slide_snackbar.dart';
 import 'package:video_player_app/core/widgets.dart';
 import 'package:video_player_app/settings/settings.dart';
 
-/// About page, laid out like the Dara Hub site: hero card, section cards and
-/// connected rows. Pure Dart (no native activity / XML).
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 

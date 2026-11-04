@@ -75,8 +75,6 @@ open class MainActivity : FlutterActivity() {
             isPlaying
         ) { isPlaying = it }
         appNative = AppNative(this, systemBars, audioFocus, equalizer)
-        // Transparent bars before the first frame, so a page sliding in never shows a black bar
-        // where the navigation bar is; again after super.onCreate (Flutter swaps the theme there).
         systemBars.enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         systemBars.enableEdgeToEdge()
@@ -219,11 +217,9 @@ open class MainActivity : FlutterActivity() {
                                 ?: return@setMethodCallHandler result.error("ARG", "name", null)
                             val src = File(path)
                             val dest = File(src.parentFile, name)
-                            // renameTo would silently replace an existing file with that name.
                             if (dest.exists() || !src.renameTo(dest)) {
                                 result.success(null)
                             } else {
-                                // Keep the media database in step: add the new name, drop the old row.
                                 try {
                                     MediaScannerConnection.scanFile(this, arrayOf(src.absolutePath, dest.absolutePath), null, null)
                                 } catch (_: Exception) {
@@ -466,7 +462,6 @@ open class MainActivity : FlutterActivity() {
                 tryFileDelete(file) || !file.exists()
             }
         } catch (_: SecurityException) {
-            // Never launch RecoverableSecurityException's confirmation sheet.
             tryFileDelete(file) || !file.exists()
         } catch (_: Exception) {
             tryFileDelete(file) || !file.exists()
@@ -844,7 +839,6 @@ open class MainActivity : FlutterActivity() {
 
     private val probedDurations = HashMap<String, Long>()
 
-    /** Duration straight from the file, remembered per file+date so rescans stay fast. Runs off the main thread. */
     private fun probeDuration(path: String, modified: Long): Long {
         val key = "$path|$modified"
         synchronized(probedDurations) { probedDurations[key]?.let { return it } }
@@ -899,14 +893,12 @@ open class MainActivity : FlutterActivity() {
                     val path = if (iData >= 0) c.getString(iData) else null
                     if (path.isNullOrBlank()) continue
                     val file = File(path)
-                    // MediaStore keeps the old row after a rename / move; the file on disk is the truth.
                     if (!file.isFile || !isVideoFile(file)) continue
                     var size = if (iSize >= 0) c.getLong(iSize) else 0L
                     if (size <= 0) size = file.length()
                     val name = file.name
                     val modified = if (iMod >= 0) c.getLong(iMod) * 1000 else file.lastModified()
                     var durationMs = if (iDur >= 0) c.getLong(iDur) else 0L
-                    // New or unindexed files (Telegram, camera, screen recordings) have no duration in MediaStore yet.
                     if (durationMs <= 0L) durationMs = probeDuration(path, modified)
                     out.add(
                         mapOf(
@@ -984,7 +976,6 @@ open class MainActivity : FlutterActivity() {
         return null
     }
 
-    // false once getScaledFrameAtTime proved to return a distorted aspect for this video.
     private var previewScaledOk = true
 
     private fun frameToJpeg(retriever: MediaMetadataRetriever, positionMs: Long, longEdge: Int): ByteArray? {
@@ -996,7 +987,6 @@ open class MainActivity : FlutterActivity() {
         val rot = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
         if (rot == 90 || rot == 270) { val t = vw; vw = vh; vh = t }
         val ar = if (vw > 0 && vh > 0) vw.toFloat() / vh else 16f / 9f
-        // Keep the video's own aspect ratio: no stretching, no cropping.
         val dw = if (ar >= 1f) edge else (edge * ar).toInt().coerceAtLeast(1)
         val dh = if (ar >= 1f) (edge / ar).toInt().coerceAtLeast(1) else edge
 

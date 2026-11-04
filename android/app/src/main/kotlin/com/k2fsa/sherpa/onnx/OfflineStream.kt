@@ -36,7 +36,6 @@ class OfflineStream(var ptr: Long) {
 
     companion object {
         init {
-            // native library is downloaded and loaded by MainActivity
         }
     }
 }

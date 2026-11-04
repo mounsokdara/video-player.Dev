@@ -2,12 +2,9 @@ package com.mounsokdara.video_player.accessibility.livecaption
 
 import android.content.Context
 
-/** Native-side Live Caption preferences (default model and language). */
 object LiveCaptionPrefs {
-    /** id to display name. Ids match [ModelStore] model items. */
     val MODELS = listOf("base" to "Whisper Base", "small" to "Whisper Small")
 
-    /** Whisper language code ("" = auto-detect) to display name. */
     val LANGS = listOf(
         "" to "Auto-detect", "en" to "English", "km" to "Khmer", "zh" to "Chinese", "ja" to "Japanese",
         "ko" to "Korean", "fr" to "French", "de" to "German", "es" to "Spanish", "ru" to "Russian",

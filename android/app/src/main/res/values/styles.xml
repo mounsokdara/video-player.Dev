@@ -14,7 +14,7 @@
         <item name="android:activityCloseEnterAnimation">@anim/page_close_enter</item>
         <item name="android:activityCloseExitAnimation">@anim/page_close_exit</item>
     </style>
-    <!-- Launch theme + slide/fade transition for the dedicated Flutter page activities. -->
+    
     <style name="PageLaunchTheme" parent="LaunchTheme">
         <item name="android:windowAnimationStyle">@style/PageAnimation</item>
     </style>

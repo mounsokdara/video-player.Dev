@@ -164,7 +164,6 @@ class VideoPicture extends StatelessWidget {
   }
 }
 
-
 class VlcFit extends StatelessWidget {
   const VlcFit({
     super.key,
@@ -261,8 +260,6 @@ class VlcFit extends StatelessWidget {
       child: SizedBox(
         width: sw,
         height: sh,
-        // OverflowBox, not Center + SizedBox: Zoom needs a box larger than the screen on one side, and
-        // Center's loose constraints would clamp it to the screen, turning Zoom into a stretch.
         child: OverflowBox(
           alignment: Alignment.center,
           minWidth: dw,

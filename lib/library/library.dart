@@ -107,13 +107,9 @@ class LibraryService {
     return copied;
   }
 
-  bool _askedAllFiles = false;
-
   Future<void> requestPermissions() async {
     await Permission.notification.request();
 
-    // Only the media read permission is requested at start. "All files access" is requested
-    // later, when the user starts a file operation (delete / rename / copy / move) or opts in.
     final sdk = await AndroidBridge.sdkInt();
     final base = sdk >= 33 ? Permission.videos : Permission.storage;
     final status = await base.request();
@@ -123,7 +119,6 @@ class LibraryService {
     manageMedia = await AndroidBridge.canManageMedia();
   }
 
-  /// Asks for All files access the first time a file operation needs it. Returns whether it is granted.
   Future<bool> requireAllFilesForOperation() async {
     allFiles = await AndroidBridge.hasAllFilesAccess();
     if (allFiles) return true;
@@ -136,7 +131,6 @@ class LibraryService {
     allFiles = await AndroidBridge.hasAllFilesAccess();
     if (!allFiles) await AndroidBridge.requestAllFilesAccess();
   }
-
 
   Future<void> scan() async {
     if (_scanning) return;
@@ -187,7 +181,7 @@ class LibraryService {
       for (final m in indexed) {
         final path = m['path'] as String? ?? '';
         if (path.isEmpty || seen.contains(path)) continue;
-        if (!File(path).existsSync()) continue; // stale MediaStore row
+        if (!File(path).existsSync()) continue;
         if (!looksLikeVideo(path, mime: m['mime'] as String?)) continue;
         if (!hidden && _isHiddenPath(path)) continue;
         if (settings.skipNomedia && _underNomedia(path)) continue;
@@ -503,8 +497,6 @@ class LibraryService {
     return ok;
   }
 
-  /// Renames a file or folder on disk. The name shown is always the basename of the real path, never a
-  /// stored copy, and everything keyed by path (bookmarks, pins, resume, speed) follows the new path.
   Future<String?> renameEntry(String path, String newName) async {
     if (!await requireAllFilesForOperation()) return null;
     final dest = await AndroidBridge.renamePath(path, newName);
@@ -550,7 +542,6 @@ class LibraryService {
     unawaited(settings.save());
   }
 
-  /// Drops an entry whose file no longer exists (stale MediaStore row) and asks Android to rescan it.
   void forgetMissing(String path) {
     videos.removeWhere((v) => v.path == path);
     _rebuildFolders();
@@ -592,12 +583,8 @@ class LibraryService {
   }
 }
 
-/// Shown for every name a rename cannot use.
 const invalidNameMessage = 'Invalid File Formating double check your file name';
 
-/// [invalidNameMessage] when [name] cannot be the new name of [original], otherwise null. Files must
-/// keep a video extension (their own, or any known video format), so a rename can never turn a
-/// video into something the library no longer recognises.
 String? renameError(String name, String original, {bool isDir = false}) {
   if (name.isEmpty || name == '.' || name == '..') return invalidNameMessage;
   if (name.contains('/') || name.contains(r'\') || name.contains('\u0000')) return invalidNameMessage;

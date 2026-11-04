@@ -27,8 +27,6 @@ class MiniPlayerOverlay extends StatefulWidget {
 
   final EdgeInsets pad;
 
-  /// Space under the content area that the mini player must stay clear of.
-  /// 0 when an app navigation bar already sits below the content area.
   final double bottomInset;
   final VoidCallback onExpand;
   final Future<void> Function() onClose;
@@ -58,20 +56,15 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   bool _wasPlayingBeforePark = false;
   bool _moved = false;
   bool _gestureActive = false;
-  // A second finger joined this gesture. A pinch must never park or dismiss the card,
-  // only a single-finger drag may do that.
   bool _multi = false;
 
-  // Touch state. Raw pointers only: no gesture arena, no scale recognizer.
   final Map<int, Offset> _fingers = <int, Offset>{};
   final ValueNotifier<bool> _capture = ValueNotifier<bool>(false);
-  bool _controlTouched = false; // set by a transport button right before the card sees the same touch
+  bool _controlTouched = false;
   bool _downOnControl = false;
   bool _dragArmed = true;
   Offset _gStartFocal = Offset.zero;
   double _baseSpan = 0;
-  // Movement the platform itself treats as "a finger moved" (tap vs drag, and the smallest
-  // spread a pinch may start from). Read from the device in build, never a fixed number.
   double _slop = kTouchSlop;
 
   bool _arrowDragging = false;
@@ -106,7 +99,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _bind();
   }
 
-  /// Called from build with the real size of the area this overlay fills.
   void _syncArea(Size area) {
     if (_lastScreen == null) {
       _lastScreen = area;
@@ -154,7 +146,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     setState(() {});
   }
 
-  // Size of the area the overlay actually occupies (set by build).
   Size get _screen => _lastScreen ?? MediaQuery.sizeOf(context);
 
   Rect get _safe => MiniPhysics.safeZone(
@@ -170,7 +161,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
   Offset get _rawPos =>
       _pos ?? MiniPhysics.defaultPos(_screen, _w, _h, _safe);
 
-  // While fingers are pinching, the card may overhang the screen freely: no edge arrow, no parking.
   bool get _pinching => _multi && _gestureActive;
 
   double _overhang(Offset pos) {
@@ -300,16 +290,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (mounted) setState(() {});
   }
 
-  // ---- touch handling --------------------------------------------------------------------
-  //
-  // Same feel as YouTube's mini player:
-  //  * the first finger lands on the card and drags it 1:1 straight away (no touch slop);
-  //  * every other finger may land ANYWHERE on screen (a capture layer sits under the card and
-  //    keeps the page below still) and joins the same gesture;
-  //  * two or more fingers move the card by their centre and resize it by their spread;
-  //  * lifting a finger carries on with the rest without a jump; the card settles when the last
-  //    finger is up. A tap (no movement) expands; a tap on a transport button is the button's own.
-
   void _markControlDown() => _controlTouched = true;
 
   Offset get _focal {
@@ -330,7 +310,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     return total / _fingers.length;
   }
 
-  /// Re-anchor the card to the fingers as they are now (first touch, finger added or lifted).
   void _rebase() {
     final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
     final cardGlobal = box?.localToGlobal(Offset.zero) ?? Offset.zero;
@@ -338,7 +317,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _startPos = _rawPos;
     _parentOrigin = cardGlobal - _startPos;
     _anchorInWidget = _focal - _parentOrigin - _startPos;
-    // The real spread at this moment. Only the platform touch slop keeps it away from zero.
     _baseSpan = math.max(_span, _slop);
   }
 
@@ -354,7 +332,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
       _gStartFocal = e.position;
       _multi = false;
       _downOnControl = onCard && control;
-      _dragArmed = !_downOnControl; // a button press only turns into a drag after the slop
+      _dragArmed = !_downOnControl;
       _capture.value = true;
       final wasParked = _parked;
       if (wasParked || _parkSide != 0) {
@@ -380,14 +358,10 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (!_dragArmed) {
       if ((focal - _gStartFocal).distance <= _slop) return;
       _dragArmed = true;
-      _rebase(); // start following from here, no jump
+      _rebase();
     }
     if ((focal - _gStartFocal).distance > _slop) _moved = true;
 
-    // Pinch: the card scales by exactly how much the fingers spread, with no upper limit, and the
-    // point of the card that was under the fingers stays under them. The only floor is one touch
-    // slop (a card narrower than a fingertip is meaningless). When the last finger lifts,
-    // _settle() eases the card back to a legal size and position.
     var targetW = _startW;
     if (_fingers.length >= 2) {
       _moved = true;
@@ -403,7 +377,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
 
   void _onFingerUp(PointerEvent e) {
     if (_fingers.remove(e.pointer) == null) return;
-    if (e is PointerCancelEvent) _moved = true; // never expand from a cancelled touch
+    if (e is PointerCancelEvent) _moved = true;
     if (_fingers.isNotEmpty) {
       _rebase();
       return;
@@ -412,7 +386,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     _finalizeGesture();
   }
 
-  /// Every move/up/cancel of a finger we track, wherever it is, even if the widget it landed on is gone.
   void _onGlobalPointer(PointerEvent e) {
     if (!_fingers.containsKey(e.pointer)) return;
     if (e is PointerMoveEvent) {
@@ -426,7 +399,7 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     if (!_gestureActive) return;
     _gestureActive = false;
     if (!_moved) {
-      if (_downOnControl) return; // the button handles its own tap
+      if (_downOnControl) return;
       if (_parked) {
         _unpark();
       } else {
@@ -511,8 +484,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
         _parkSide = side;
       });
     } else {
-      // After a pinch the card may be far bigger than it will rest, so pick the side and row from
-      // where its centre is, not from its (possibly far off-screen) corner.
       final fromH = MiniPhysics.boxFor(_w, video).height;
       final from = _multi
           ? fromPos + Offset((_w - settledW) / 2, (fromH - settledH) / 2)
@@ -673,9 +644,6 @@ class _MiniPlayerOverlayState extends State<MiniPlayerOverlay>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Under the card, over the page: while a finger is down on the card it swallows every other
-        // touch (so the page below stays still) and feeds it to the same gesture. Always mounted,
-        // only switched on and off, so the card is never rebuilt in the middle of a touch.
         Positioned.fill(
           key: const ValueKey('mini-capture'),
           child: ValueListenableBuilder<bool>(

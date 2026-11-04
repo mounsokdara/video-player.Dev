@@ -6,11 +6,6 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.util.IdentityHashMap
 
-/**
- * Connects our own playback engine (NativePlayer) to one FlutterEngine.
- * The player is created lazily on the first open(), so screens that never play video
- * (Settings, Console, licenses all run as their own Flutter activity) cost nothing.
- */
 object EngineBridge {
     const val METHODS = "app.videoplayer/engine"
     const val EVENTS = "app.videoplayer/engine_events"
@@ -86,7 +81,6 @@ object EngineBridge {
         }
     }
 
-    /** Called when the hosting activity / engine goes away. */
     fun release(engine: FlutterEngine?) {
         if (engine == null) return
         val p = players.remove(engine) ?: return
