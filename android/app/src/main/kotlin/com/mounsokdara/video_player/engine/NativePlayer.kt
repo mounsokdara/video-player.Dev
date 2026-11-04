@@ -468,7 +468,11 @@ class NativePlayer(
 
             // Pick the decoder now so a failure is reported by open() and the app can retry.
             val canSoft = SwNative.available && softwareCodecId(mime) >= 0
-            var wantSw = canSoft && (preferSoftware || noHardwareFor(vf))
+            // Streams whose width is not a multiple of 16 (e.g. 886x1920 screen recordings) get a
+            // padded decoder buffer. The hardware surface path can show that padding as a green
+            // strip on the right edge, so decode those in software, which writes exact-size frames.
+            val unalignedWidth = w > 0 && w % 16 != 0
+            var wantSw = canSoft && (preferSoftware || noHardwareFor(vf) || unalignedWidth)
             if (!wantSw) {
                 createHardwareOutput(w, hgt)
                 try {
