@@ -39,7 +39,7 @@ struct Sw {
     int threads = 4;
     uint8_t lut[1024];
     int lutTrc = -1;
-    int tunePeak = 400;   // nits, 203 = SDR white
+    int tunePeak = 203;   // nits, 203 = SDR white (neutral)
     int tuneGamma = 0;    // -100..100
 };
 
@@ -78,14 +78,6 @@ double srgbEncode(double t) {
 void buildLut(Sw* s, int trc) {
     const double gain = std::sqrt(std::min(std::max(s->tunePeak / 203.0, 0.25), 4.0));
     const double gexp = 1.0 / (1.0 + std::min(std::max(s->tuneGamma / 100.0, -0.9), 0.9));
-    // SDR sources are already display-referred: the HDR "look" tuning (peak / gamma) must not touch
-    // them, or they come out brighter than the hardware decoder / system player. Pass them through.
-    const bool hdrSource = trc == AVCOL_TRC_SMPTE2084 || trc == AVCOL_TRC_ARIB_STD_B67;
-    if (!hdrSource) {
-        for (int i = 0; i < 1024; i++) s->lut[i] = (uint8_t)std::lround(i / 1023.0 * 255.0);
-        s->lutTrc = trc;
-        return;
-    }
     for (int i = 0; i < 1024; i++) {
         const double v = i / 1023.0;
         double out = v;

@@ -87,7 +87,6 @@ class _RenderSheetState extends State<_RenderSheet> {
                 value: tune.peak.toDouble().clamp(100.0, 1000.0).toDouble(),
                 min: 100,
                 max: 1000,
-                divisions: 36,
                 onChanged: (v) {
                   setState(() => _rs.setTuning(sdr: _sdr, peak: v.round()));
                   e?.retune();
@@ -99,7 +98,6 @@ class _RenderSheetState extends State<_RenderSheet> {
                 value: tune.gamma.toDouble().clamp(-50.0, 50.0).toDouble(),
                 min: -50,
                 max: 50,
-                divisions: 100,
                 onChanged: (v) {
                   setState(() => _rs.setTuning(sdr: _sdr, gamma: v.round()));
                   e?.retune();

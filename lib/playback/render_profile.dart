@@ -12,7 +12,7 @@ class RenderSettings {
   RenderSettings._();
   static final RenderSettings instance = RenderSettings._();
 
-  static const defaultPeakHdr = 400;
+  static const defaultPeakHdr = 203;
   static const defaultPeakSdr = 203;
 
   int peakHdr = defaultPeakHdr;

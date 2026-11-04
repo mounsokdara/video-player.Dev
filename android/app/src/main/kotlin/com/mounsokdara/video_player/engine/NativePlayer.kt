@@ -128,7 +128,7 @@ class NativePlayer(
     private var volume = 1f
     private var balL = 1f
     private var balR = 1f
-    private var tunePeak = 400
+    private var tunePeak = 203
     private var tuneGamma = 0
     private var decoderName = ""
     private val badDecoders = HashSet<String>()
