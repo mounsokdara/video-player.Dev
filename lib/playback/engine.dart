@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -334,8 +335,25 @@ class PlaybackEngine extends ChangeNotifier {
   }
 
   Future<void> retune() async {
-    if (!_mine || !_convert) return;
+    if (!_mine) return;
     await _pushTuning();
+    notifyListeners();
+  }
+
+  /// The software decoder shapes brightness itself. Hardware decode has no tone shaping, so the
+  /// render-sheet controls are applied as a colour matrix over the texture instead: an encoded-space
+  /// approximation of the software curve (white-level gain, then a straight line through the
+  /// mid-tone gamma curve at 0.5). Null = nothing to apply (software decode, or defaults).
+  List<double>? get hardwareTone {
+    if (_software || _closed) return null;
+    final t = RenderSettings.instance.tuning(sdr: _sdrMode);
+    if (t.peak == RenderSettings.defaultPeakSdr && t.gamma == 0) return null;
+    final gain = math.pow(t.peak.clamp(25, 4000) / 203.0, 1 / 4.4).toDouble();
+    final e = 1.0 / (1.0 + (t.gamma / 100.0).clamp(-0.9, 0.9).toDouble());
+    final slope = e * math.pow(0.5, e - 1).toDouble();
+    final off = (math.pow(0.5, e).toDouble() - slope * 0.5) * 255.0;
+    final s = slope * gain;
+    return <double>[s, 0, 0, 0, off, 0, s, 0, 0, off, 0, 0, s, 0, off, 0, 0, 0, 1, 0];
   }
 
   Future<void> reapplyRender() async {
@@ -348,7 +366,7 @@ class PlaybackEngine extends ChangeNotifier {
     _sdrMode = sdr;
     appSettings.hdrOn = !sdr;
     if (appSettings.rememberHdr) unawaited(appSettings.save());
-    if (_mine && _convert) await _pushTuning();
+    if (_mine) await _pushTuning();
     notifyListeners();
   }
 
@@ -600,6 +618,7 @@ class VideoLogOverlay extends StatelessWidget {
 class _AppVideoState extends State<AppVideo> {
   int? _texture;
   String _info = '';
+  String _tone = '';
 
   @override
   void initState() {
@@ -627,10 +646,12 @@ class _AppVideoState extends State<AppVideo> {
   void _onEngine() {
     final next = widget.engine.textureId;
     final info = widget.engine.debugInfo;
-    if (mounted && (next != _texture || info != _info)) {
+    final tone = widget.engine.hardwareTone?.join(',') ?? '';
+    if (mounted && (next != _texture || info != _info || tone != _tone)) {
       setState(() {
         _texture = next;
         _info = info;
+        _tone = tone;
       });
     }
   }
@@ -640,6 +661,10 @@ class _AppVideoState extends State<AppVideo> {
     final id = _texture;
     if (id == null) return const ColoredBox(color: Colors.black);
     final size = widget.engine.displaySize;
+    final toneMatrix = widget.engine.hardwareTone;
+    final Widget tex = toneMatrix == null
+        ? Texture(textureId: id)
+        : ColorFiltered(colorFilter: ColorFilter.matrix(toneMatrix), child: Texture(textureId: id));
     final w = size.width > 1 ? size.width : 16.0;
     final h = size.height > 1 ? size.height : 9.0;
     // The texture holds the coded frame; the codec's rotation is applied here.
@@ -653,7 +678,7 @@ class _AppVideoState extends State<AppVideo> {
           height: h,
           child: RotatedBox(
             quarterTurns: widget.engine.quarterTurns,
-            child: Texture(textureId: id),
+            child: tex,
           ),
         ),
       ),

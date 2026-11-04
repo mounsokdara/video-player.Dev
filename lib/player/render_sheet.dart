@@ -82,7 +82,7 @@ class _RenderSheetState extends State<_RenderSheet> {
                   ? 'Switches the active render mode live. For HDR videos this changes HDR/SDR tone mapping; for SDR videos it applies the selected render tuning.'
                   : 'Start a video to change the render mode.'),
               _title('${_sdr ? 'SDR' : 'HDR'} brightness'),
-              Text('White level: ${tune.peak} nits (higher = darker)'),
+              Text('White level: ${tune.peak} nits (higher = brighter)'),
               Slider(
                 value: tune.peak.toDouble().clamp(100.0, 1000.0).toDouble(),
                 min: 100,
