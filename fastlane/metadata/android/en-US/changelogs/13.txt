@@ -7,6 +7,5 @@ v1.0.4 (2026-10-31)
 • Fix screenshot: captures the video frame, faster, no stall
 • Search results: select, select all, actions
 • Screenshot format setting (PNG, JPG, JPEG)
-• Reproducible F-Droid builds, per-ABI APKs
-• Removed Verson Tag
-• Added Verson code display
+• Removed Version Tag
+• Added Version code display
