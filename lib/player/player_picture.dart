@@ -261,8 +261,15 @@ class VlcFit extends StatelessWidget {
       child: SizedBox(
         width: sw,
         height: sh,
-        child: Center(
-          child: SizedBox(width: dw, height: dh, child: child),
+        // OverflowBox, not Center + SizedBox: Zoom needs a box larger than the screen on one side, and
+        // Center's loose constraints would clamp it to the screen, turning Zoom into a stretch.
+        child: OverflowBox(
+          alignment: Alignment.center,
+          minWidth: dw,
+          maxWidth: dw,
+          minHeight: dh,
+          maxHeight: dh,
+          child: child,
         ),
       ),
     );
