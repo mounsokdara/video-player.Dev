@@ -122,6 +122,8 @@ class NativePlayer(
     private val ts = AudioTimestamp()
 
     private var lastEmitNs = 0L
+    private var lastVOutNs = 0L
+    private var lastAOutNs = 0L
 
     // Volume / balance / effects session (the app's equalizer attaches to this session id).
     @Volatile private var audioSession = 0
@@ -436,6 +438,7 @@ class NativePlayer(
         anchorNs = System.nanoTime()
         skipBeforeUs = Long.MIN_VALUE
         needFirstFrame = vFormat != null
+        lastVOutNs = System.nanoTime(); lastAOutNs = lastVOutNs
         vInEos = false; vOutDone = false; pendingV = -1
         aInEos = false; aOutDone = false; pendingA = -1
         audioBaseSet = false; audioStarted = false; writtenSinceFlush = 0
@@ -665,6 +668,7 @@ class NativePlayer(
         skipBeforeUs = at
         vInEos = false; vOutDone = false; pendingV = -1
         needFirstFrame = true
+        lastVOutNs = System.nanoTime()
         seekStartNs = System.nanoTime()
     }
 
@@ -885,6 +889,7 @@ class NativePlayer(
         }
         audioBaseSet = false; audioStarted = false; writtenSinceFlush = 0
         needFirstFrame = vFormat != null
+        lastVOutNs = System.nanoTime(); lastAOutNs = lastVOutNs
         anchorUs = t
         anchorNs = System.nanoTime()
         seekStartNs = System.nanoTime()
@@ -1025,6 +1030,7 @@ class NativePlayer(
                 if (i == MediaCodec.INFO_TRY_AGAIN_LATER) return
                 if (i < 0) continue // format / buffers changed
                 pendingV = i
+                lastVOutNs = System.nanoTime()
                 pendingVPts = vInfo.presentationTimeUs
                 pendingVFlags = vInfo.flags
             }
@@ -1156,6 +1162,7 @@ class NativePlayer(
                 }
                 if (i < 0) continue
                 pendingA = i
+                lastAOutNs = System.nanoTime()
                 pendingAOff = aInfo.offset
                 pendingARemain = aInfo.size
                 pendingAPts = aInfo.presentationTimeUs
@@ -1188,22 +1195,23 @@ class NativePlayer(
     }
 
     private fun checkEnded() {
-        val audioDone = aCodec == null || aOutDone
+        // Seeking into the last second right after a flush can make a hardware decoder swallow
+        // its end-of-stream marker (seen on MediaTek). The stream is over when every sample was
+        // fed, nothing is waiting to be shown/written and the decoder stayed silent for a while.
+        val nowNs = System.nanoTime()
+        val audioDrained = aInEos && pendingA < 0 && nowNs - lastAOutNs > 600_000_000L
+        val videoDrained = vInEos && pendingV < 0 && nowNs - lastVOutNs > 600_000_000L
+        val audioDone = aCodec == null || aOutDone || audioDrained
         val videoDone = when {
             vFormat == null -> true
             sw != 0L -> swEos && !swHave
-            vCodec != null -> vOutDone && pendingV < 0
+            vCodec != null -> (vOutDone || videoDrained) && pendingV < 0
             else -> durationUs > 0 && clockUs() >= durationUs
         }
         if (audioDone && videoDone && pendingA < 0) {
             // let the tail of the audio buffer play out
             if (durationUs <= 0 || clockUs() >= durationUs - 150_000L) finish()
-            return
         }
-        // Watchdog: after scrubbing near the end a decoder may never report EOS (hardware HEVC
-        // on some MediaTek phones), which left the player "playing" at 0:00 left forever and
-        // never advanced to the next video. If the clock ran past the end, call it finished.
-        if (durationUs > 0 && clockUs() >= durationUs + 1_200_000L) finish()
     }
 
     // =====================================================================================

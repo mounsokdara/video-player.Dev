@@ -381,7 +381,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     await appSettings.saveResume();
   }
 
-  DateTime? _atEndSince;
   double _lastSavedProgress = -1;
   String? _lastSavedPath;
 
@@ -392,7 +391,6 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     _endArmed = false;
     _armFromMs = -1;
     _completedSince = null;
-    _atEndSince = null;
     _endRecheck?.cancel();
     _scrub = null;
     _previewBytes = null;
@@ -525,17 +523,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
           _endArmed = true; // the video has really played
         }
       }
+      if (_endedLatch && playing && !c.value.completed && durMs > 0 && posMs < durMs - 1500) {
+        _endedLatch = false; // user seeked back / replayed after the end: arm the end check again
+        _completedSince = null;
+      }
       if (!_endedLatch && ready && _endArmed && nowTick.difference(_openedAt) >= const Duration(milliseconds: 1500)) {
         final nearEnd = durMs > 0 && posMs >= durMs - 400;
-        // Sitting at the very end while the engine still says "playing" means the decoder
-        // never reported the end (seeked into the last second). Treat it as ended after 2s.
-        if (nearEnd && playing) {
-          _atEndSince ??= nowTick;
-        } else {
-          _atEndSince = null;
-        }
-        final stuckAtEnd = _atEndSince != null &&
-            nowTick.difference(_atEndSince!) >= const Duration(milliseconds: 2000);
         // A "completed" flag far from the end is only trusted when it stays set (truncated files).
         final completedSane = c.value.completed && (durMs <= 0 || posMs >= durMs - 3000);
         if (c.value.completed && !playing) {
@@ -551,7 +544,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
         }
         final completedHeld = _completedSince != null &&
             nowTick.difference(_completedSince!) >= const Duration(milliseconds: 1800);
-        if (completedSane || completedHeld || stuckAtEnd || (nearEnd && !playing)) {
+        if (completedSane || completedHeld || (nearEnd && !playing)) {
           _endedLatch = true;
           DeveloperLog.player('next: ended pos=${posMs}ms dur=${durMs}ms completed=${c.value.completed}');
           _onEnded();
