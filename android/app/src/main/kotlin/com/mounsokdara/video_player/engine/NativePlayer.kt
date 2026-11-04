@@ -866,7 +866,27 @@ class NativePlayer(
         emitState()
     }
 
-    private fun doSeek(t: Long, accurate: Boolean) {
+    /** A seek onto the very end is simply "the video ended": no decoding, same result as playing out. */
+    private fun seekToEnd() {
+        quiet { if (pendingV >= 0) vCodec?.releaseOutputBuffer(pendingV, false) }
+        quiet { if (pendingA >= 0) aCodec?.releaseOutputBuffer(pendingA, false) }
+        pendingV = -1; pendingA = -1
+        needFirstFrame = false
+        quiet { track?.pause(); track?.flush() }
+        audioBaseSet = false; audioStarted = false; writtenSinceFlush = 0
+        finishSeek()
+        finish()
+    }
+
+    private fun doSeek(target: Long, wantAccurate: Boolean) {
+        if (opened && durationUs > 0 && target >= durationUs - 500_000L) {
+            seekToEnd()
+            return
+        }
+        // A keyframe-only seek in the last seconds lands on an earlier keyframe, so playback
+        // jumped back "a few seconds". Near the end always seek to the exact spot instead.
+        val accurate = wantAccurate || (durationUs > 0 && target >= durationUs - 4_000_000L)
+        val t = target
         atEnd = false
         pausedUs = t
         skipBeforeUs = if (accurate) t else Long.MIN_VALUE
