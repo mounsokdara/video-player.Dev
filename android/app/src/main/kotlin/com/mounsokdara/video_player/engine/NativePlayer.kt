@@ -123,6 +123,9 @@ class NativePlayer(
 
     private var lastEmitNs = 0L
     private var lastVOutNs = 0L
+    // Wall-clock deadline guard: where we were (media time) at which wall time, since the last seek/play/speed change.
+    private var wdUs = 0L
+    private var wdNs = 0L
     private var lastAOutNs = 0L
 
     // Volume / balance / effects session (the app's equalizer attaches to this session id).
@@ -228,6 +231,7 @@ class NativePlayer(
             val c = if (opened) clockUs() else 0L
             anchorUs = c
             anchorNs = System.nanoTime()
+            markWatchdog(c)
             speed = v
             applyParams()
         }
@@ -848,12 +852,18 @@ class NativePlayer(
     // Transport
     // =====================================================================================
 
+    private fun markWatchdog(us: Long) {
+        wdUs = us
+        wdNs = System.nanoTime()
+    }
+
     private fun doPlay() {
         if (!opened || playing) return
         if (atEnd) doSeek(0L, true)
         playing = true
         anchorUs = pausedUs
         anchorNs = System.nanoTime()
+        markWatchdog(pausedUs)
         emitState()
     }
 
@@ -879,7 +889,7 @@ class NativePlayer(
     }
 
     private fun doSeek(target: Long, wantAccurate: Boolean) {
-        if (opened && durationUs > 0 && target >= durationUs - 500_000L) {
+        if (opened && durationUs > 0 && target >= durationUs - 800_000L) {
             seekToEnd()
             return
         }
@@ -912,6 +922,7 @@ class NativePlayer(
         lastVOutNs = System.nanoTime(); lastAOutNs = lastVOutNs
         anchorUs = t
         anchorNs = System.nanoTime()
+        markWatchdog(t)
         seekStartNs = System.nanoTime()
         if (vFormat == null) finishSeek()
         emitState()
@@ -1231,6 +1242,14 @@ class NativePlayer(
         if (audioDone && videoDone && pendingA < 0) {
             // let the tail of the audio buffer play out
             if (durationUs <= 0 || clockUs() >= durationUs - 150_000L) finish()
+            return
+        }
+        // Safety net, never early: playing from a known spot at a known speed must reach the end
+        // by wall time. If a decoder still did not report it 1s after that moment (seen after
+        // seeking into the last second), the video is over.
+        if (durationUs > 0 && speed > 0f) {
+            val playedUs = ((nowNs - wdNs) / 1000.0 * speed).toLong()
+            if (wdUs + playedUs >= durationUs + 1_000_000L) finish()
         }
     }
 
