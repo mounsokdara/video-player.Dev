@@ -42,6 +42,7 @@ class PlaybackSession {
 
   static bool _endedLatch = false;
   static bool _busy = false;
+  static int _queuedDelta = 0;
   static int _failStreak = 0;
   static VoidCallback? _hook;
   static bool _away = false;
@@ -50,7 +51,6 @@ class PlaybackSession {
   static String _notifyTitle = '';
 
   static const _endSlop = Duration(milliseconds: 400);
-  static const _replayAfter = Duration(seconds: 3);
 
   static bool get active => keepAlive && controller != null && item != null;
   static bool get away => _away;
@@ -197,6 +197,7 @@ class PlaybackSession {
     _unlisten();
     _endedLatch = false;
     _busy = false;
+    _queuedDelta = 0;
     _failStreak = 0;
     _away = false;
     sleepTimer?.cancel();
@@ -388,42 +389,39 @@ class PlaybackSession {
 
   static int nextIndex({required int delta}) {
     final list = playlist;
-    if (list.isEmpty) return index;
+    if (list.isEmpty || delta == 0) return index;
     final mode = appSettings.playMode;
-    if (delta > 0) {
-      if (mode == PlayMode.shuffle) {
-        if (list.length == 1) return 0;
-        var n = math.Random().nextInt(list.length);
-        if (n == index) n = (n + 1) % list.length;
-        return n;
-      }
-      if (index >= list.length - 1) {
-        return mode == PlayMode.loopAll ? 0 : index;
-      }
-      return index + 1;
+    final n = list.length;
+    if (delta > 0 && mode == PlayMode.shuffle) {
+      if (n == 1) return 0;
+      var r = math.Random().nextInt(n);
+      if (r == index) r = (r + 1) % n;
+      return r;
     }
-    if (index > 0) return index - 1;
-    return mode == PlayMode.loopAll ? list.length - 1 : 0;
+    final raw = index + delta;
+    if (mode == PlayMode.loopAll) return ((raw % n) + n) % n;
+    return math.max(0, math.min(n - 1, raw));
   }
 
   static Future<void> skip(int delta, {bool fromEnd = false, bool fromError = false}) async {
-    if (_busy) return;
+    if (_busy) {
+      // A switch is still loading: remember the tap so it is applied right after, not lost.
+      if (!fromEnd && !fromError) _queuedDelta += delta;
+      return;
+    }
     if (controller == null && item == null) return;
     final list = playlist;
     if (list.isEmpty) return;
 
-    if (delta < 0 && !fromEnd && !fromError) {
-      final pos = controller?.value.position ?? Duration.zero;
-      if (pos > _replayAfter) {
-        try {
-          await controller?.seekTo(Duration.zero);
-          if (!(controller?.value.isPlaying ?? false)) await controller?.play();
-        } catch (_) {}
-        return;
-      }
-    }
-
     var next = nextIndex(delta: delta);
+    if (next == index && delta < 0 && !fromEnd && !fromError) {
+      // Nothing before the first item: restart it (the only case where Previous replays).
+      try {
+        await controller?.seekTo(Duration.zero);
+        if (!(controller?.value.isPlaying ?? false)) await controller?.play();
+      } catch (_) {}
+      return;
+    }
     if (fromError && next == index && list.length > 1) {
       next = (index + 1) % list.length;
     }
@@ -438,6 +436,9 @@ class PlaybackSession {
     if (!ok && list.length > 1 && _failStreak < list.length) {
       await skip(1, fromError: true);
     }
+    final queued = _queuedDelta;
+    _queuedDelta = 0;
+    if (queued != 0) await skip(queued);
   }
 
   static Future<bool> swapTo(VideoItem next, {required List<VideoItem> list, required int at, bool forceSoftware = false}) async {

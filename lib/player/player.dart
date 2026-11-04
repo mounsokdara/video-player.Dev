@@ -591,18 +591,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver, Si
     await _openCurrent();
   }
 
+  /// Previous always switches to the previous item in one tap. Only when there is nothing
+  /// before the first item does it restart the current video.
   Future<void> _prev() async {
-    if ((vc?.value.position ?? Duration.zero) > const Duration(seconds: 3)) {
+    if (list.isEmpty) return;
+    if (index > 0) {
+      index -= 1;
+    } else if (appSettings.playMode == PlayMode.loopAll) {
+      index = list.length - 1;
+    } else {
       await vc?.seekTo(Duration.zero);
       return;
     }
-    if (index > 0) {
-      index -= 1;
-      await _openCurrent();
-    } else if (appSettings.playMode == PlayMode.loopAll && list.isNotEmpty) {
-      index = list.length - 1;
-      await _openCurrent();
-    }
+    await _openCurrent();
   }
 
   void _setUi(bool on) {
